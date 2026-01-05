@@ -329,6 +329,82 @@ class DataImporter:
         finally:
             conn.close()
     
+    async def list_tile_codes(
+        self,
+        database_config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        列出数据库中所有已导入的图幅代码
+        
+        Args:
+            database_config: 数据库配置
+            
+        Returns:
+            图幅代码列表字典
+        """
+        conn = self._get_connection(database_config)
+        
+        try:
+            with conn.cursor() as cur:
+                # 查找所有包含tile_code字段的表
+                cur.execute("""
+                    SELECT DISTINCT table_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' 
+                      AND column_name = 'tile_code'
+                      AND table_name NOT IN ('spatial_ref_sys', 'geometry_columns')
+                    ORDER BY table_name;
+                """)
+                
+                tables_with_tile_code = [row[0] for row in cur.fetchall()]
+                
+                if not tables_with_tile_code:
+                    return {
+                        "tile_codes": [],
+                        "total": 0,
+                        "message": "未找到包含tile_code字段的表"
+                    }
+                
+                # 从所有表中收集图幅代码
+                all_tile_codes = set()
+                tile_code_stats = {}
+                
+                for table_name in tables_with_tile_code:
+                    try:
+                        cur.execute(f"""
+                            SELECT DISTINCT tile_code, COUNT(*) as count
+                            FROM {table_name}
+                            WHERE tile_code IS NOT NULL
+                            GROUP BY tile_code
+                            ORDER BY tile_code;
+                        """)
+                        
+                        for tile_code, count in cur.fetchall():
+                            all_tile_codes.add(tile_code)
+                            if tile_code not in tile_code_stats:
+                                tile_code_stats[tile_code] = {}
+                            tile_code_stats[tile_code][table_name] = count
+                    except Exception as e:
+                        logger.warning(f"查询表 {table_name} 的图幅代码失败: {e}")
+                
+                # 构建结果
+                tile_codes_list = []
+                for tile_code in sorted(all_tile_codes):
+                    total_records = sum(tile_code_stats[tile_code].values())
+                    tile_codes_list.append({
+                        "tile_code": tile_code,
+                        "total_records": total_records,
+                        "tables": tile_code_stats[tile_code]
+                    })
+                
+                return {
+                    "tile_codes": tile_codes_list,
+                    "total": len(tile_codes_list)
+                }
+        
+        finally:
+            conn.close()
+    
     async def execute_sql(
         self,
         sql: str,
@@ -442,7 +518,7 @@ class DataImporter:
             """)
             result["invalid_geometries"] = cur.fetchone()[0]
             
-            # 字段信息
+            # 字段信息（包含字段说明）
             cur.execute(f"""
                 SELECT column_name, data_type
                 FROM information_schema.columns
@@ -450,7 +526,23 @@ class DataImporter:
                   AND table_name = %s
                 ORDER BY ordinal_position;
             """, (table_name,))
-            result["columns"] = [{"name": row[0], "type": row[1]} for row in cur.fetchall()]
+            
+            # 获取字段说明
+            from core.spec_loader import SpecLoader
+            spec_loader = SpecLoader()
+            field_descriptions = self._get_field_descriptions(table_name, spec_loader)
+            
+            columns_info = []
+            for row in cur.fetchall():
+                col_name = row[0]
+                col_type = row[1]
+                description = field_descriptions.get(col_name, "字段说明请查看docs/FIELD_SPEC.md")
+                columns_info.append({
+                    "name": col_name,
+                    "type": col_type,
+                    "description": description
+                })
+            result["columns"] = columns_info
         
         except Exception as e:
             result["error"] = str(e)

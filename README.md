@@ -157,17 +157,46 @@ python mcp_server.py
 ```
 
 #### 在MCP客户端中配置
-在MCP客户端配置文件中添加：
+
+在MCP客户端配置文件中添加配置。详细配置说明请查看 [MCP配置文档](docs/MCP_CONFIG.md)。
+
+**基本配置示例（使用绝对路径）：**
+
 ```json
 {
   "mcpServers": {
     "china-1m-geodata-postgis-mcp": {
       "command": "python",
-      "args": ["/path/to/mcp_server.py"]
+      "args": [
+        "C:/Users/YourUsername/Desktop/gdb_mcp/mcp_server.py"
+      ],
+      "cwd": "C:/Users/YourUsername/Desktop/gdb_mcp"
     }
   }
 }
 ```
+
+**使用虚拟环境（推荐）：**
+
+```json
+{
+  "mcpServers": {
+    "china-1m-geodata-postgis-mcp": {
+      "command": "C:/Users/YourUsername/Desktop/gdb_mcp/.venv/Scripts/python.exe",
+      "args": [
+        "C:/Users/YourUsername/Desktop/gdb_mcp/mcp_server.py"
+      ],
+      "cwd": "C:/Users/YourUsername/Desktop/gdb_mcp"
+    }
+  }
+}
+```
+
+**注意：**
+- 必须使用**绝对路径**
+- 推荐设置 `cwd` 为项目根目录
+- 推荐使用虚拟环境
+- 详细配置说明和常见问题请查看 [MCP配置文档](docs/MCP_CONFIG.md)
 
 ## 📊 数据规格配置
 
@@ -200,80 +229,69 @@ python mcp_server.py
 
 ## 🛠️ MCP工具
 
-### 1. import_geodata
+**注意：MCP服务专注于数据查询和分析，不提供数据导入功能。数据导入应使用脚本 `scripts/import_data.py` 完成。详细导入说明请查看 [快速开发与测试](docs/QUICK_TEST.md)。**
 
-导入GDB地理数据到PostgreSQL/PostGIS数据库。此功能为1:100万基础地理信息PostGIS MCP服务提供数据基础，导入后可通过其他工具进行空间查询和分析。
+**重要提示：**
+1. **查询前必须先使用 `list_tile_codes` 查看有哪些图幅可用**，然后根据目的地地理位置确定需要查询的图幅。不要只查询F49图幅！详细说明请查看 [图幅编号指南](docs/TILE_CODE_GUIDE.md)。
+2. **查询前必须先使用 `verify_import` 查看字段说明**，了解每个字段的含义，不要猜测字段含义。详细字段说明请查看 [字段说明文档](docs/FIELD_SPEC.md)。
 
-**参数：**
-- `data_path` (必需): GDB文件路径（.gdb目录）
-- `spec_name` (可选): 数据规格名称，如果不提供则自动检测
-- `database_config` (可选): 数据库连接配置，如果不提供则使用默认配置
-- `options` (可选): 导入选项
-  - `srid`: 目标坐标系SRID（默认4326）
-  - `batch_size`: 批量插入大小（默认1000）
-  - `skip_invalid`: 跳过无效几何（默认true）
-  - `create_indexes`: 创建索引（默认true）
+### 1. list_tile_codes
 
-**注意：** 数据必须先导入PostgreSQL才能进行空间查询和分析。导入功能为1:100万基础地理信息PostGIS MCP服务提供数据基础。
-
-### 2. verify_import
-
-验证PostgreSQL/PostGIS中已导入的数据，检查数据完整性、坐标系、几何有效性等。
+列出数据库中所有已导入的图幅代码。**这是查询数据的第一步，必须先执行！**图幅编号是全球通用的1:100万图幅编号（如F49、F50、G49、G50等），每个图幅覆盖约6°×4°的地理范围。根据查询目的地的地理位置确定需要查询的图幅，例如：惠州市主要在F49和F50图幅，广州市主要在F49图幅。
 
 **参数：**
-- `table_name` (可选): 要验证的表名，如果不提供则验证所有表
 - `database_config` (可选): 数据库连接配置
 
-### 3. query_data
+**返回：** 图幅代码列表，包含每个图幅在各表中的记录数统计
 
-查询PostgreSQL/PostGIS中的空间数据，支持空间过滤和属性过滤。
+### 2. list_tables
 
-**参数：**
-- `table_name` (必需): 表名
-- `spatial_filter` (可选): 空间过滤条件
-  - `bbox`: 边界框 [minx, miny, maxx, maxy]
-  - `geometry`: WKT格式的几何对象
-- `attribute_filter` (可选): 属性过滤条件
-- `limit` (可选): 返回记录数限制（默认100）
-- `database_config` (可选): 数据库连接配置
-
-### 4. list_specs
-
-列出所有可用的数据规格配置（用于数据导入）。
-
-### 5. get_spec
-
-获取指定数据规格的详细信息（用于数据导入）。
-
-**参数：**
-- `spec_name` (必需): 数据规格名称
-
-### 6. register_spec
-
-注册新的数据规格配置（用于数据导入）。
-
-**参数：**
-- `spec_name` (必需): 数据规格名称
-- `spec_config` (必需): 数据规格配置（JSON对象）
-
-### 7. list_tables
-
-列出PostgreSQL/PostGIS数据库中所有包含空间数据的表。
+列出PostgreSQL/PostGIS数据库中所有已导入的地理数据表。返回每个表的名称、记录数、坐标系(SRID)等信息。**在查询数据之前，应该先使用此工具查看可用的表，不要盲目猜测表名。**
 
 **参数：**
 - `database_config` (可选): 数据库连接配置
 
 **返回：** 表列表，包含表名、记录数、坐标系等信息
 
-### 8. execute_sql
+### 3. verify_import
 
-在PostgreSQL/PostGIS数据库中执行SQL查询。支持PostGIS空间函数，用于复杂空间查询和分析。
+验证PostgreSQL/PostGIS中已导入的数据，检查数据完整性、坐标系、几何有效性、空间范围等。返回每个表的记录数、坐标系(SRID)、边界框(bbox)、无效几何数量、字段信息（包含字段说明）等。**这是了解表结构和字段含义的重要工具，在查询数据前必须先使用此工具查看字段说明，不要猜测字段含义。**详细字段说明请查看 [字段说明文档](docs/FIELD_SPEC.md)。
 
 **参数：**
-- `sql` (必需): 要执行的SQL语句（仅支持SELECT查询）
+- `table_name` (可选): 要验证的表名（建议先使用list_tables查看可用表），如果不提供则验证所有表
 - `database_config` (可选): 数据库连接配置
 
-**注意：** 出于安全考虑，只允许执行SELECT查询语句。
+### 4. query_data
+
+查询PostgreSQL/PostGIS中的空间数据，支持空间过滤和属性过滤。**适用于简单的空间查询，如：按边界框查询、按几何相交查询、按属性过滤等。对于复杂的空间分析（如计算面积、距离、缓冲区、空间连接等），应使用execute_sql工具配合PostGIS函数。**
+
+**参数：**
+- `table_name` (必需): 表名（必须先使用list_tables查看可用表）
+- `spatial_filter` (可选): 空间过滤条件
+  - `bbox`: 边界框 [minx, miny, maxx, maxy]，单位为度（经纬度）
+  - `geometry`: WKT格式的几何对象，如 'POINT(113.3 23.1)' 或 'POLYGON((...))'
+- `attribute_filter` (可选): 属性过滤条件，键值对形式，如 {"tile_code": "F49"}
+- `limit` (可选): 返回记录数限制（默认100）
+- `database_config` (可选): 数据库连接配置
+
+### 5. execute_sql
+
+在PostgreSQL/PostGIS数据库中执行SQL查询。**这是进行复杂空间分析和计算的主要工具。**支持所有PostGIS空间函数，如：ST_Area(计算面积)、ST_Distance(计算距离)、ST_Buffer(缓冲区)、ST_Intersects(相交判断)、ST_Within(包含判断)、ST_Union(合并)、ST_Intersection(求交)、ST_Centroid(中心点)、ST_Envelope(边界框)等。
+
+**适用场景：**
+- 空间分析（面积、距离、缓冲区、空间关系判断）
+- 空间计算（合并、求交、简化、转换坐标系）
+- 复杂查询（多表连接、聚合统计、空间分组）
+- 数据统计（按区域统计、按图幅统计等）
+
+**参数：**
+- `sql` (必需): 要执行的SQL SELECT语句。可以使用PostGIS空间函数，例如：
+  - 计算面积：`ST_Area(geom::geography)/1000000`（转换为平方公里）
+  - 计算距离：`ST_Distance(geom1::geography, geom2::geography)/1000`（转换为公里）
+  - 空间过滤：`ST_Intersects(geom1, geom2)` 或 `geom && ST_MakeEnvelope(...)`
+- `database_config` (可选): 数据库连接配置
+
+**注意：** 出于安全考虑，只允许执行SELECT查询语句。详细的使用指南和PostGIS函数参考请查看 [MCP工具使用指南](docs/MCP_TOOLS_GUIDE.md)。
 
 ## 📁 项目结构
 
@@ -351,18 +369,15 @@ python mcp_server.py
 
 ### 通过MCP客户端调用
 
-在支持MCP的AI助手中，可以直接调用工具：
+在支持MCP的AI助手中，可以直接调用工具进行数据查询和分析：
 
-**1. 导入数据（必须先执行）**
+**注意：数据导入应使用脚本完成，不在MCP服务中提供。使用 `python scripts/import_data.py <gdb_path>` 导入数据。**
 
-导入全国地理信息资源目录服务系统下载的1:100万图幅数据：
-```
-请导入 /path/to/F49.gdb 文件到PostgreSQL数据库，使用 china_1m_2021 规格
-```
+**1. 列出图幅代码（必须先执行）**
 
-支持批量导入多个图幅，例如：
+查看数据库中有哪些图幅可用：
 ```
-请导入 /path/to/gdb_directory 目录下的所有GDB文件
+列出数据库中所有已导入的图幅代码
 ```
 
 **2. 列出已导入的表**
@@ -375,12 +390,12 @@ python mcp_server.py
 验证 water_system_area 表的数据
 ```
 
-**4. 查询数据**
+**3. 查询数据**
 ```
 查询 road 表中在边界框 [110, 20, 120, 30] 内的所有记录
 ```
 
-**5. 执行复杂SQL查询**
+**4. 执行复杂SQL查询**
 ```
 执行SQL查询：SELECT COUNT(*) as count, tile_code FROM water_system_area GROUP BY tile_code
 ```
@@ -462,6 +477,12 @@ Email: 747384120@qq.com
 
 - [数据规格说明](docs/DATA_SPEC.md) - 数据字段和规格说明
 - [快速开发与测试](docs/QUICK_TEST.md) - 快速开发指南和测试步骤
+- [MCP工具使用指南](docs/MCP_TOOLS_GUIDE.md) - **LLM使用工具指南，包含工具选择决策树、PostGIS函数参考和使用示例**
+- [MCP配置文档](docs/MCP_CONFIG.md) - **MCP客户端配置指南，包含配置文件位置、配置示例和常见问题**
+- [查询示例](docs/QUERY_EXAMPLES.md) - **常用PostGIS空间查询示例，包含自然保护区查询等实际案例**
+- [字段说明文档](docs/FIELD_SPEC.md) - **所有表的字段详细说明，帮助LLM正确理解字段含义，避免猜测**
+- [图幅编号指南](docs/TILE_CODE_GUIDE.md) - **1:100万图幅编号说明，如何根据地理位置确定图幅**
+- [标准查询工作流程](docs/QUERY_WORKFLOW.md) - **LLM查询数据的标准流程，必须按顺序执行，避免常见错误**
 
 ---
 
