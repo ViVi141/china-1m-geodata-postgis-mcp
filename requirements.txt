@@ -1,4 +1,5 @@
-# MCP地理数据导入服务依赖
+# 1:100万基础地理信息PostGIS MCP服务依赖
+# China 1M GeoData PostGIS MCP Service Dependencies
 # 
 # 安装方法:
 # pip install -r requirements.txt

@@ -1,7 +1,7 @@
 {
-  "name": "geodata-import-mcp",
+  "name": "china-1m-geodata-postgis-mcp",
   "version": "1.0.0",
-  "description": "通用化地理数据导入MCP服务，支持多种数据格式和规格规范",
+  "description": "1:100万基础地理信息PostGIS MCP服务 - China 1M GeoData PostGIS MCP Service",
   "type": "module",
   "main": "mcp_server.py",
   "scripts": {

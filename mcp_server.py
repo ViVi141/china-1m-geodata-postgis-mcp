@@ -1,6 +1,9 @@
 """
-MCP服务器：基于PostgreSQL/PostGIS的地理数据导入服务
-专注于高性能地理数据管理和查询
+1:100万基础地理信息PostGIS MCP服务器
+China 1M GeoData PostGIS MCP Server
+
+基于PostgreSQL/PostGIS的空间数据服务
+提供PostGIS空间数据查询、分析和交互能力
 """
 
 import asyncio
@@ -25,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 创建MCP服务器实例
-app = Server("geodata-import-mcp")
+app = Server("china-1m-geodata-postgis-mcp")
 
 # 初始化核心组件
 config_manager = ConfigManager()
