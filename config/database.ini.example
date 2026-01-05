@@ -1,0 +1,11 @@
+[postgresql]
+# PostgreSQL数据库连接配置
+host = localhost
+port = 5432
+database = gis_data
+user = postgres
+password = your_password
+
+# 可选: 指定schema（默认为public）
+# schema = public
+

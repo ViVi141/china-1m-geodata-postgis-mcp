@@ -1,0 +1,180 @@
+{
+  "name": "china_1m_2021",
+  "description": "全国1:100万公众版基础地理信息数据(2021)数据规格",
+  "version": "1.0.0",
+  "default_srid": 4326,
+  "tile_code_pattern": "auto",
+  "layer_mapping": {
+    "CPTP": {
+      "table_name": "control_points",
+      "description": "测量控制点",
+      "category": "定位基础"
+    },
+    "CPTL": {
+      "table_name": "coordinate_grid",
+      "description": "坐标网",
+      "category": "定位基础"
+    },
+    "HYDA": {
+      "table_name": "water_system_area",
+      "description": "水系(面)",
+      "category": "水系"
+    },
+    "HYDL": {
+      "table_name": "water_system_line",
+      "description": "水系(线)",
+      "category": "水系"
+    },
+    "HYDP": {
+      "table_name": "water_system_point",
+      "description": "水系(点)",
+      "category": "水系"
+    },
+    "HFCA": {
+      "table_name": "water_facility_area",
+      "description": "水系附属设施(面)",
+      "category": "水系"
+    },
+    "HFCL": {
+      "table_name": "water_facility_line",
+      "description": "水系附属设施(线)",
+      "category": "水系"
+    },
+    "HFCP": {
+      "table_name": "water_facility_point",
+      "description": "水系附属设施(点)",
+      "category": "水系"
+    },
+    "RESA": {
+      "table_name": "residential_area",
+      "description": "居民地(面)",
+      "category": "居民地及设施"
+    },
+    "RESL": {
+      "table_name": "residential_line",
+      "description": "居民地(线)",
+      "category": "居民地及设施"
+    },
+    "RESP": {
+      "table_name": "residential_point",
+      "description": "居民地(点)",
+      "category": "居民地及设施"
+    },
+    "RFCA": {
+      "table_name": "facility_area",
+      "description": "设施(面)",
+      "category": "居民地及设施"
+    },
+    "RFCL": {
+      "table_name": "facility_line",
+      "description": "设施(线)",
+      "category": "居民地及设施"
+    },
+    "RFCP": {
+      "table_name": "facility_point",
+      "description": "设施(点)",
+      "category": "居民地及设施"
+    },
+    "LRRL": {
+      "table_name": "railway",
+      "description": "铁路",
+      "category": "交通"
+    },
+    "LRDL": {
+      "table_name": "road",
+      "description": "公路",
+      "category": "交通"
+    },
+    "LFCL": {
+      "table_name": "transport_facility_line",
+      "description": "交通附属设施(线)",
+      "category": "交通"
+    },
+    "LFCP": {
+      "table_name": "transport_facility_point",
+      "description": "交通附属设施(点)",
+      "category": "交通"
+    },
+    "PIPL": {
+      "table_name": "pipeline",
+      "description": "管线(线)",
+      "category": "管线"
+    },
+    "PIPP": {
+      "table_name": "pipeline_point",
+      "description": "管线(点)",
+      "category": "管线"
+    },
+    "BOUA": {
+      "table_name": "administrative_boundary_area",
+      "description": "行政境界(面)",
+      "category": "境界与政区"
+    },
+    "BOUL": {
+      "table_name": "administrative_boundary_line",
+      "description": "行政境界(线)",
+      "category": "境界与政区"
+    },
+    "BOUP": {
+      "table_name": "administrative_boundary_point",
+      "description": "行政境界(点)",
+      "category": "境界与政区"
+    },
+    "BRGA": {
+      "table_name": "regional_boundary_area",
+      "description": "区域界线(面)",
+      "category": "境界与政区"
+    },
+    "BRGL": {
+      "table_name": "regional_boundary_line",
+      "description": "区域界线(线)",
+      "category": "境界与政区"
+    },
+    "BRGP": {
+      "table_name": "regional_boundary_point",
+      "description": "区域界线(点)",
+      "category": "境界与政区"
+    },
+    "TERA": {
+      "table_name": "terrain_area",
+      "description": "地貌与土质(面)",
+      "category": "地貌与土质"
+    },
+    "TERL": {
+      "table_name": "terrain_line",
+      "description": "地貌与土质(线)",
+      "category": "地貌与土质"
+    },
+    "TERP": {
+      "table_name": "terrain_point",
+      "description": "地貌与土质(点)",
+      "category": "地貌与土质"
+    },
+    "VEGA": {
+      "table_name": "vegetation_area",
+      "description": "植被(面)",
+      "category": "植被"
+    },
+    "VEGL": {
+      "table_name": "vegetation_line",
+      "description": "植被(线)",
+      "category": "植被"
+    },
+    "VEGP": {
+      "table_name": "vegetation_point",
+      "description": "植被(点)",
+      "category": "植被"
+    },
+    "AGNP": {
+      "table_name": "place_name_residential",
+      "description": "居民地地名",
+      "category": "地名及注记"
+    },
+    "AANP": {
+      "table_name": "place_name_natural",
+      "description": "自然地名",
+      "category": "地名及注记"
+    }
+  }
+}
+

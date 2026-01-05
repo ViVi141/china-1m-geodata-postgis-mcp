@@ -1,0 +1,28 @@
+{
+  "name": "geodata-import-mcp",
+  "version": "1.0.0",
+  "description": "通用化地理数据导入MCP服务，支持多种数据格式和规格规范",
+  "type": "module",
+  "main": "mcp_server.py",
+  "scripts": {
+    "start": "python mcp_server.py"
+  },
+  "keywords": [
+    "mcp",
+    "geodata",
+    "gis",
+    "postgresql",
+    "postgis",
+    "gdb",
+    "shapefile"
+  ],
+  "author": "ViVi141 <747384120@qq.com>",
+  "license": "MIT",
+  "mcp": {
+    "server": {
+      "command": "python",
+      "args": ["mcp_server.py"]
+    }
+  }
+}
+

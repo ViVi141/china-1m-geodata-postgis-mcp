@@ -1,0 +1,29 @@
+version: '3.8'
+
+# Alpine版本 - 更小的镜像体积
+# 适合开发环境或资源受限的场景
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: geodata-postgres-alpine
+    environment:
+      POSTGRES_DB: gis_data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_alpine:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gis_data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_alpine:
+    driver: local
+

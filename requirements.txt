@@ -1,0 +1,21 @@
+# MCP地理数据导入服务依赖
+# 
+# 安装方法:
+# pip install -r requirements.txt
+#
+# 注意: 在Windows上，fiona和GDAL可能需要额外步骤:
+# 1. 使用conda: conda install -c conda-forge gdal fiona shapely psycopg2
+# 2. 或下载OSGeo4W: https://trac.osgeo.org/osgeo4w/
+
+# MCP核心库
+mcp>=0.9.0
+
+# 地理数据处理
+fiona>=1.9.0
+psycopg2-binary>=2.9.0
+shapely>=2.0.0
+
+# 配置和工具
+configparser>=5.0.0
+pyyaml>=6.0.0
+
