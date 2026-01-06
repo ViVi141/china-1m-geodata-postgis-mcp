@@ -15,10 +15,25 @@ def reset_database(confirm=True):
     print("=" * 60)
     
     # 读取配置
-    config_file = Path(__file__).parent.parent / "config" / "database.ini"
-    if not config_file.exists():
-        print(f"错误: 配置文件不存在: {config_file}")
+    # 支持多种路径：本地开发、Docker容器等
+    possible_paths = [
+        Path(__file__).parent.parent / "config" / "database.ini",  # 本地开发
+        Path("/app/config/database.ini"),  # Docker容器
+    ]
+    
+    config_file = None
+    for path in possible_paths:
+        if path.exists():
+            config_file = path
+            break
+    
+    if config_file is None:
+        print(f"错误: 配置文件不存在，已检查以下路径:")
+        for path in possible_paths:
+            print(f"  - {path}")
         return False
+    
+    print(f"使用配置文件: {config_file}")
     
     config = configparser.ConfigParser()
     try:
@@ -28,7 +43,19 @@ def reset_database(confirm=True):
         print(f"错误: 无法读取配置文件: {e}")
         return False
     
+    if 'postgresql' not in config:
+        print(f"错误: 配置文件中缺少[postgresql]节")
+        return False
+    
     db_config = config['postgresql']
+    
+    # 显示配置信息（不显示密码）
+    print(f"数据库连接信息:")
+    print(f"  主机: {db_config.get('host', 'localhost')}")
+    print(f"  端口: {db_config.get('port', '5432')}")
+    print(f"  数据库: {db_config.get('database', '')}")
+    print(f"  用户: {db_config.get('user', '')}")
+    print(f"  密码: {'***已设置***' if db_config.get('password') else '未设置'}")
     
     try:
         conn = psycopg2.connect(
@@ -123,7 +150,12 @@ def reset_database(confirm=True):
         print(f"错误: 无法连接数据库: {e}")
         print("\n请检查:")
         print("1. PostgreSQL容器是否运行: docker ps")
-        print("2. 数据库配置是否正确")
+        print("2. 数据库密码是否正确:")
+        print("   - 检查 .env 文件中的 POSTGRES_PASSWORD")
+        print("   - 确保与PostgreSQL容器启动时使用的密码一致")
+        print("   - 或者检查环境变量 DB_PASSWORD 或 POSTGRES_PASSWORD")
+        print("3. 配置文件路径: {}".format(config_file))
+        print("4. 在Docker环境中，确保环境变量已正确传递到容器")
         return False
     except Exception as e:
         print(f"错误: {e}")
