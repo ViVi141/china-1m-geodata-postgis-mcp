@@ -8,7 +8,9 @@
 
 - `Dockerfile` - MCP 服务器镜像构建文件
 - `Dockerfile.importer` - 数据导入服务镜像构建文件
-- `docker-compose.yml` - 主编排文件
+- `Dockerfile.supergateway` - Supergateway网关服务镜像构建文件
+- `docker-compose.yml` - 主编排文件（包含所有服务，使用profiles控制）
+- `docker-compose.alpine.yml` - Alpine版本配置（轻量级变体）
 - `docker-compose.override.yml.example` - 覆盖配置示例
 - `.dockerignore` - Docker 构建忽略文件
 

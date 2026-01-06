@@ -2,19 +2,28 @@
 
 **China 1M GeoData PostGIS MCP Service**
 
-基于PostgreSQL/PostGIS的MCP（Model Context Protocol）服务，专门为**全国地理信息资源目录服务系统**下载的地理数据定制化开发。提供PostGIS空间数据的查询、分析和交互能力，支持1:100万公众版基础地理信息数据（2021）的导入和管理。
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue.svg)](https://www.postgresql.org/)
+[![PostGIS](https://img.shields.io/badge/PostGIS-2.5+-green.svg)](https://postgis.net/)
+[![MCP](https://img.shields.io/badge/MCP-Protocol-orange.svg)](https://modelcontextprotocol.io/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+一个专为**全国地理信息资源目录服务系统**的1:100万基础地理信息数据设计的PostGIS MCP服务，通过Model Context Protocol（MCP）协议让AI助手能够直接访问和查询PostgreSQL/PostGIS中的空间地理数据。
 
 ## 📋 项目简介
 
-本项目是一个基于MCP协议的**PostGIS空间数据服务**，专门为全国地理信息资源目录服务系统的1:100万基础地理信息数据定制化开发，专注于提供PostgreSQL/PostGIS数据库的空间查询、分析和交互能力：
+本项目是一个**企业级PostGIS空间数据MCP服务**，专注于将1:100万公众版基础地理信息数据（2021）导入PostgreSQL/PostGIS，并通过MCP协议提供强大的空间查询、分析和交互能力。项目支持Docker一键部署，提供完整的工具链，让地理数据查询变得简单高效。
 
-- ✅ **PostgreSQL/PostGIS**：数据导入到PostgreSQL，利用空间索引实现高性能查询
-- ✅ **GDB格式支持**：支持导入GDB地理数据库文件
-- ✅ **通用化配置**：通过JSON/YAML配置文件定义数据规格
-- ✅ **自动检测**：自动识别数据规格
-- ✅ **数据验证**：自动验证和修复无效几何
-- ✅ **MCP标准**：符合Model Context Protocol标准，可与AI助手集成
-- ✅ **SQL查询**：支持执行复杂SQL查询进行数据分析
+### 🌟 核心特性
+
+- 🚀 **MCP协议集成**：符合Model Context Protocol标准，可与Claude、GPT等AI助手无缝集成
+- 🗄️ **统一表结构**：智能设计统一表结构，支持多图幅数据统一管理和查询
+- ⚡ **高性能查询**：基于PostgreSQL/PostGIS空间索引（GIST），实现毫秒级空间查询
+- 🔧 **一键部署**：支持Docker Compose一键部署，包含PostgreSQL、MCP服务、Supergateway网关
+- 📊 **完整工具链**：提供从数据解析、表结构设计、数据导入到验证的完整工具集
+- 🛡️ **数据质量保障**：自动验证和修复无效几何，确保数据完整性
+- 📚 **详细文档**：提供完整的文档体系，包括字段说明、表用途指南、查询示例等
+- 🌐 **远程访问**：支持Supergateway网关，实现HTTP/SSE/WebSocket远程访问
 
 ### 与PostgreMCP的区别
 
@@ -30,48 +39,96 @@
 
 **两个服务可以互补使用**：使用我们的服务进行PostGIS空间数据查询和分析，使用PostgreMCP优化数据库性能。
 
-### 核心定位
+### 💡 使用场景
 
-本项目是**1:100万基础地理信息PostGIS MCP服务**，主要功能包括：
-- ✅ **PostGIS空间查询**：提供空间数据查询和分析能力
-- ✅ **SQL执行**：支持执行PostGIS空间SQL查询
-- ✅ **数据导入**：支持GDB等格式导入（为服务提供数据基础）
-- ✅ **数据验证**：验证PostGIS数据的完整性和有效性
+- 🤖 **AI助手集成**：让Claude、GPT等AI助手能够理解和查询中国地理数据
+- 🗺️ **地理信息查询**：快速查询行政区划、水系、交通等地理要素
+- 📊 **空间分析**：进行缓冲区分析、空间相交、距离计算等复杂空间分析
+- 🔍 **地理位置定位**：根据经纬度查询周边地理要素，或根据地名查找坐标
+- 📈 **数据可视化**：为GIS应用、地图服务提供后端数据支持
+- 🏛️ **政务应用**：支持政务系统中对地理数据的查询和分析需求
 
-### 数据来源与定制
+### 核心功能
 
-本项目专门为**全国地理信息资源目录服务系统**下载的地理数据定制化开发：
+- ✅ **空间数据查询**：支持空间过滤、属性过滤、复杂空间分析查询
+- ✅ **PostGIS SQL执行**：支持所有PostGIS空间函数（ST_Area、ST_Distance、ST_Buffer等）
+- ✅ **GDB数据导入**：支持批量导入GDB格式地理数据库，自动识别图幅代码
+- ✅ **统一表结构**：智能解析并创建统一表结构，多图幅数据共享表设计
+- ✅ **数据验证**：自动验证几何有效性，修复无效几何，统计导入结果
+- ✅ **图幅管理**：自动识别和管理1:100万标准图幅代码（F49、G50等）
+- ✅ **字段说明**：自动生成字段说明文档，帮助理解数据含义
 
-#### 1:100万公众版基础地理信息数据（2021）
+### 📍 数据来源与定制
 
-- **数据范围**：覆盖全国陆地范围和包括台湾岛、海南岛、钓鱼岛、南海诸岛在内的主要岛屿及其临近海域
-- **图幅数量**：共77幅1:100万标准图幅
-- **现势性**：整体现势性为2019年
-- **坐标系**：采用2000国家大地坐标系，1985国家高程基准，经纬度坐标
-- **数据来源**：经自然资源部授权，全国地理信息资源目录服务系统提供免费下载服务
-- **数据内容**：包含9个数据集
-  - 水系
-  - 居民地及设施
-  - 交通
-  - 管线
-  - 境界与政区
-  - 地貌与土质
-  - 植被
-  - 地名及注记
-  - 定位基础（测量控制点、坐标网）
+本项目专门为**全国地理信息资源目录服务系统**的1:100万公众版基础地理信息数据（2021）定制化开发，经过深度优化，可直接用于生产环境。
 
-#### 数据格式
+#### 数据概况
 
-- **分发格式**：采用1:100万标准图幅分发，每个图幅为独立的GDB地理数据库文件
-- **数据特点**：保存要素间空间关系和相关属性信息
-- **扩展支持**：理论上也支持1:25万全国基础地理数据库
+**1:100万公众版基础地理信息数据（2021）**
+- 📦 **覆盖范围**：全国陆地及主要岛屿（台湾岛、海南岛、钓鱼岛、南海诸岛等）
+- 🗺️ **图幅数量**：77幅1:100万标准图幅
+- 📅 **数据现势性**：2019年
+- 🌐 **坐标系**：2000国家大地坐标系（CGCS2000），1985国家高程基准，经纬度坐标（SRID: 4326）
+- 📊 **数据来源**：自然资源部授权，全国地理信息资源目录服务系统免费提供
 
-#### 定制化特性
+**9大地理要素数据集**：
+1. 🌊 **水系**：河流、湖泊、水库等水体要素
+2. 🏘️ **居民地及设施**：城市、乡镇、村庄等居住区域
+3. 🛣️ **交通**：公路、铁路、机场等交通设施
+4. 🔌 **管线**：输油管道、输电线路等管线要素
+5. 🗺️ **境界与政区**：省、市、县等行政边界
+6. ⛰️ **地貌与土质**：地形、地质特征
+7. 🌳 **植被**：森林、草地等植被覆盖
+8. 📍 **地名及注记**：地名、地理标注信息
+9. 📐 **定位基础**：测量控制点、坐标网格
 
-- ✅ **数据规格配置**：内置1:100万数据规格配置（`china_1m_2021`）
-- ✅ **自动识别**：自动识别图幅代码（F49、G49等）
-- ✅ **图层映射**：自动映射GDB图层到PostgreSQL表
-- ✅ **图幅管理**：支持多图幅数据统一管理和查询
+#### 项目优势
+
+- 🎯 **开箱即用**：内置完整的数据规格配置（`china_1m_2021`），无需手动配置
+- 🤖 **智能识别**：自动识别图幅代码（F49、G50等），自动提取图幅信息
+- 🔄 **统一管理**：统一的表结构设计，多图幅数据无缝整合
+- 📋 **完整工具链**：从数据解析到导入验证的完整自动化流程
+- 🔍 **字段说明**：自动生成字段说明文档，降低使用门槛
+
+### 🏗️ 技术架构
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    AI助手 (Claude/GPT)                   │
+│                  通过MCP协议通信                          │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│              MCP服务器 (mcp_server.py)                   │
+│  • list_tile_codes  • list_tables  • verify_import     │
+│  • query_data  • execute_sql                            │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│          PostgreSQL/PostGIS 数据库                       │
+│  • 空间索引(GIST)  • 空间数据类型  • PostGIS函数        │
+│  • 统一表结构  • 多图幅数据整合                          │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│              数据导入工具链                              │
+│  • parse_tile_schema  • create_unified_schema          │
+│  • import_all_tiles  • verify_data                      │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│            GDB地理数据库文件 (1:100万)                   │
+│  F49.gdb  F50.gdb  G49.gdb  G50.gdb ... (77幅)         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**部署方式**：
+- 🐳 **Docker部署**（推荐）：使用docker-compose一键部署，支持本地和远程访问
+- 💻 **本地部署**：直接运行Python脚本，适合开发和测试环境
 
 ## 🚀 快速开始
 
@@ -329,24 +386,26 @@ python scripts/setup_unified_database.py
 │   ├── parse_tile_schema.py   # ⭐ 完全解析图幅结构
 │   ├── create_unified_schema.py  # ⭐ 创建统一表结构
 │   ├── import_all_tiles.py    # ⭐ 导入所有图幅数据
-│   ├── check_layers.py        # 检查GDB图层
+│   ├── check.py               # ⭐ 统一检查工具（连接/图层/几何质量）
 │   ├── generate_field_spec.py # 生成字段说明文档
 │   ├── verify_data.py         # 验证导入数据
-│   ├── check_connection.py    # 测试数据库连接
-│   ├── check_geometry_quality.py  # 检查几何质量
 │   ├── reset_database.py      # 重置数据库
-│   ├── start_docker.bat/sh    # 启动Docker（Windows/Linux）
-│   └── start_mcp.bat/sh       # 启动MCP（Windows/Linux）
+│   ├── start_mcp.bat/sh       # 启动MCP（Windows/Linux）
+│   └── start-supergateway.bat/sh  # 启动Supergateway（Windows/Linux）
 ├── examples/                  # 示例代码
 │   ├── __init__.py
 │   └── example_usage.py       # 使用示例
 ├── docs/                      # 文档目录
 │   ├── UNIFIED_SCHEMA_GUIDE.md  # ⭐ 统一表结构导入指南
 │   ├── MCP_GUIDE.md            # ⭐ MCP服务完整指南（配置、工具使用、查询流程）
+│   ├── MCP_DOCKER_CONFIG.md    # ⭐ Docker部署后的MCP配置指南
 │   ├── FIELD_SPEC.md           # 字段说明文档
 │   ├── TABLE_USAGE_GUIDE.md    # ⭐ 表用途和单位转换指南（重要）
 │   ├── TILE_CODE_GUIDE.md     # 图幅编号指南
-│   └── QUERY_EXAMPLES.md       # 查询示例
+│   ├── QUERY_EXAMPLES.md       # 查询示例
+│   ├── DOCKER_GUIDE.md         # Docker编排使用指南
+│   ├── DOCKER_LINUX_DEPLOY.md  # Linux Docker完整部署指南
+│   └── DOCKER_WINDOWS_DEPLOY.md # Windows Docker部署指南
 ├── docker-compose.yml         # Docker Compose配置
 ├── docker-compose.alpine.yml  # Alpine版本配置
 ├── init.sql                   # 数据库初始化脚本
@@ -471,14 +530,14 @@ python scripts/verify_data.py
 **其他常用脚本：**
 
 ```bash
-# 测试数据库连接
-python scripts/check_connection.py
+# 统一检查工具（推荐）
+python scripts/check.py --connection    # 检查数据库连接和PostGIS
+python scripts/check.py --layers F49.gdb  # 检查GDB图层信息
+python scripts/check.py --geometry      # 检查几何数据质量
+python scripts/check.py --all           # 执行所有检查
 
-# 检查几何质量
-python scripts/check_geometry_quality.py
-
-# 检查GDB图层信息
-python scripts/check_layers.py <gdb_path>
+# 验证数据
+python scripts/verify_data.py
 
 # 重置数据库
 python scripts/reset_database.py
@@ -548,6 +607,13 @@ Email: 747384120@qq.com
 - [字段说明文档](docs/FIELD_SPEC.md) - **所有表的字段详细说明，帮助LLM正确理解字段含义，避免猜测**
 - [图幅编号指南](docs/TILE_CODE_GUIDE.md) - **1:100万图幅编号说明，如何根据地理位置确定图幅**
 - [查询示例](docs/QUERY_EXAMPLES.md) - **常用PostGIS空间查询示例，包含自然保护区查询等实际案例**
+
+### Docker部署文档
+- [Docker快速开始指南](README_DOCKER.md) - **Docker快速启动指南**
+- [Docker编排使用指南](docs/DOCKER_GUIDE.md) - **Docker Compose详细使用说明**
+- [Docker部署后的MCP配置指南](docs/MCP_DOCKER_CONFIG.md) - **⭐ Docker部署后的MCP客户端配置**
+- [Linux Docker完整部署指南](docs/DOCKER_LINUX_DEPLOY.md) - **Linux系统完整部署步骤（含Supergateway）**
+- [Windows Docker部署指南](docs/DOCKER_WINDOWS_DEPLOY.md) - **Windows系统Docker部署步骤（含Supergateway）**
 
 ### 开发和测试文档
 - [脚本说明](scripts/README.md) - 所有脚本的功能说明和使用方法

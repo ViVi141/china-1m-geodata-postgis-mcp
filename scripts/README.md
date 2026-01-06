@@ -174,11 +174,34 @@ python scripts/reset_database.py --yes
 
 ## 🚀 服务启动
 
-### start_docker.bat / start_docker.sh
-启动PostgreSQL/PostGIS Docker容器。
-
 ### start_mcp.bat / start_mcp.sh
-启动MCP服务器。
+在虚拟环境中启动MCP服务器（本地开发使用）。
+
+**使用示例**：
+```bash
+# Windows
+scripts\start_mcp.bat
+
+# Linux/Mac
+./scripts/start_mcp.sh
+```
+
+### start-supergateway.bat / start-supergateway.sh
+启动Supergateway服务，将Docker容器中的MCP服务器暴露为HTTP/SSE/WebSocket服务。
+
+**使用示例**：
+```bash
+# 先启动基础服务
+docker-compose up -d
+
+# Windows - 启动Supergateway
+scripts\start-supergateway.bat
+
+# Linux/Mac - 启动Supergateway
+./scripts/start-supergateway.sh
+```
+
+**注意**：此脚本需要在宿主机上运行，连接到Docker容器中的MCP服务器。适用于需要远程访问MCP服务的场景。
 
 ## 📋 标准工作流程
 
@@ -245,8 +268,8 @@ python scripts/import_all_tiles.py
 | **验证** | `verify_data.py` | ✅ 可用 | 验证数据 |
 | | `check.py` | ⭐ 推荐 | 统一检查工具（连接/图层/几何质量） |
 | **管理** | `reset_database.py` | ✅ 可用 | 重置数据库 |
-| **启动** | `start_docker.*` | ✅ 可用 | 启动Docker |
-| | `start_mcp.*` | ✅ 可用 | 启动MCP |
+| **启动** | `start_mcp.*` | ✅ 可用 | 启动MCP（本地） |
+| | `start-supergateway.*` | ✅ 可用 | 启动Supergateway（Docker） |
 
 ## 🔗 相关文档
 
