@@ -72,6 +72,7 @@ def reset_database(confirm=True):
     
     # 尝试连接，提供更详细的错误信息
     try:
+        print(f"\n正在连接到: {host}:{port}/{database} (用户: {user})")
         conn = psycopg2.connect(
             host=host,
             port=port,
@@ -80,6 +81,21 @@ def reset_database(confirm=True):
             password=password,
             connect_timeout=5
         )
+        
+        # 验证连接到的PostgreSQL版本和容器信息
+        with conn.cursor() as cur:
+            cur.execute("SELECT version();")
+            pg_version = cur.fetchone()[0]
+            print(f"✓ 成功连接到PostgreSQL")
+            print(f"  PostgreSQL版本: {pg_version[:50]}...")
+            
+            # 检查PostGIS是否可用
+            try:
+                cur.execute("SELECT PostGIS_Version();")
+                postgis_version = cur.fetchone()[0]
+                print(f"  PostGIS版本: {postgis_version}")
+            except:
+                print(f"  ⚠️  警告: PostGIS扩展未安装")
         
         with conn.cursor() as cur:
             # 查找所有有geom字段的表（导入的地理数据表）
@@ -164,6 +180,7 @@ def reset_database(confirm=True):
     except psycopg2.OperationalError as e:
          print(f"错误: 无法连接数据库: {e}")
          print("\n诊断信息:")
+         print(f"  尝试连接: {host}:{port}/{database} (用户: {user})")
          print(f"  尝试使用的密码前3个字符: {password[:3] if len(password) >= 3 else 'N/A'}")
          print(f"  密码长度: {len(password)}")
          print(f"  配置来源: {config_source}")
@@ -183,21 +200,29 @@ def reset_database(confirm=True):
              if config_password:
                  print(f"  配置文件中的密码长度: {len(config_password)}")
          
-         print("\n请检查:")
-         print("1. PostgreSQL容器是否运行: docker ps")
-         print("2. 验证PostgreSQL容器的实际密码:")
-         print("   docker inspect geodata-postgres | grep -A 5 POSTGRES_PASSWORD")
-         print("   或者:")
-         print("   docker-compose exec postgres env | grep POSTGRES_PASSWORD")
-         print("3. 检查 .env 文件中的 POSTGRES_PASSWORD 是否与容器启动时的密码一致")
-         print("4. 如果PostgreSQL容器使用了旧密码（可能来自旧的volume），需要:")
+         # 检查是否连接到了错误的PostgreSQL容器
+         print("\n⚠️  可能的问题:")
+         print("1. **连接到了错误的PostgreSQL容器**（最可能）")
+         print("   - 检查是否有多个PostgreSQL容器在运行:")
+         print("     docker ps | grep postgres")
+         print("   - 确认 geodata-postgres 容器在正确的网络中:")
+         print("     docker inspect geodata-postgres | grep NetworkMode")
+         print("   - 确认 data-importer 容器在正确的网络中:")
+         print("     docker inspect geodata-importer | grep NetworkMode")
+         print("   - 检查 geodata-network 网络:")
+         print("     docker network inspect geodata-network")
+         print("2. 密码不匹配")
+         print("   - 验证PostgreSQL容器的实际密码:")
+         print("     docker inspect geodata-postgres | grep -A 5 POSTGRES_PASSWORD")
+         print("   - 或者: docker-compose exec postgres env | grep POSTGRES_PASSWORD")
+         print("3. 如果PostgreSQL容器使用了旧密码（可能来自旧的volume），需要:")
          print("   - 方法1: 查看容器实际使用的密码，修改 .env 文件使其一致")
          print("   - 方法2: 重新创建容器和数据卷（注意：会删除数据）:")
          print("     docker-compose down")
          print("     docker volume rm geodata-postgres-data")
          print("     修改 .env 文件中的 POSTGRES_PASSWORD")
          print("     docker-compose up -d")
-         print("5. 配置文件路径: {}".format(config_file))
+         print("4. 配置文件路径: {}".format(config_file))
          return False
     except Exception as e:
         print(f"错误: {e}")
