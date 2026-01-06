@@ -1,0 +1,45 @@
+version: '3.8'
+
+# Supergateway 修复版配置
+# 解决 Docker CLI 不可用的问题
+
+services:
+  # Supergateway - 使用包含Docker CLI的镜像或挂载Docker CLI
+  supergateway:
+    image: supercorp/supergateway:latest
+    container_name: geodata-supergateway
+    environment:
+      LOG_LEVEL: ${GATEWAY_LOG_LEVEL:-info}
+    ports:
+      - "${GATEWAY_SSE_PORT:-8000}:8000"
+      - "${GATEWAY_WS_PORT:-8001}:8001"
+    volumes:
+      # 挂载Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # 方案1: 挂载Docker CLI（Linux）
+      # - /usr/bin/docker:/usr/bin/docker:ro
+      # 方案2: 挂载Docker CLI（Windows/WSL2 - Docker Desktop）
+      # - /mnt/wsl/docker-desktop/cli-tools:/usr/local/bin/docker:ro
+      # 方案3: 使用docker-compose exec（推荐，不需要Docker CLI）
+      # 通过容器网络直接连接，使用docker-compose exec
+    depends_on:
+      - mcp-server
+    restart: unless-stopped
+    networks:
+      - geodata-network
+    # 方案A: 使用docker-compose exec（需要docker-compose在容器内）
+    # 不推荐，因为需要安装docker-compose
+    
+    # 方案B: 直接通过容器网络执行命令（推荐）
+    # 使用nsenter或直接通过容器网络连接
+    # 但这需要特殊权限
+    
+    # 方案C: 使用包含Docker CLI的基础镜像
+    # 创建一个自定义镜像，基于supergateway，添加Docker CLI
+    
+    # 方案D: 让Supergateway直接运行Python（需要安装Python和依赖）
+    # 不推荐，因为需要重复安装所有依赖
+    
+    # 临时方案: 使用外部脚本（在宿主机运行）
+    # 见 scripts/start-supergateway.sh 或 scripts/start-supergateway.bat
+

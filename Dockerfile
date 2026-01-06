@@ -1,0 +1,55 @@
+# 1:100万基础地理信息PostGIS MCP服务 - Docker镜像
+# 使用官方Python镜像作为基础镜像
+FROM python:3.11-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# 安装系统依赖（GDAL、PostgreSQL客户端等）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdal-bin \
+    libgdal-dev \
+    python3-gdal \
+    libpq-dev \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置GDAL环境变量
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
+ENV C_INCLUDE_PATH=/usr/include/gdal
+
+# 复制依赖文件
+COPY requirements.txt .
+
+# 安装Python依赖
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 复制项目文件
+COPY . .
+
+# 创建必要的目录
+RUN mkdir -p /app/config /app/specs /app/data
+
+# 复制入口脚本
+COPY scripts/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# 设置权限
+RUN chmod +x main.py mcp_server.py
+
+# 暴露端口（如果需要HTTP接口，可以取消注释）
+# EXPOSE 8000
+
+# 设置入口点
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+# 默认命令：启动MCP服务器
+CMD ["python", "mcp_server.py"]
+

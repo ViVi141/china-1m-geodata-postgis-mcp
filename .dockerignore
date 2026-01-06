@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 数据文件（大文件，不包含在镜像中）
+*.gdb/
+F*.gdb/
+G*.gdb/
+*.shp
+*.dbf
+*.shx
+*.prj
+
+# 日志
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 配置文件（敏感信息）
+config/database.ini
+!config/database.ini.example
+
+# 文档（可选，如果需要可以移除）
+docs/
+*.md
+!README.md
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 其他
+*.bak
+*.backup
+

@@ -1,0 +1,32 @@
+# Docker Compose 覆盖文件示例
+# 复制此文件为 docker-compose.override.yml 来自定义配置
+# 此文件会被 docker-compose 自动加载（如果存在）
+
+version: '3.8'
+
+services:
+  # 覆盖MCP服务器配置示例
+  mcp-server:
+    environment:
+      # 添加自定义环境变量
+      DEBUG: "true"
+      LOG_LEVEL: "INFO"
+    # 开发模式下挂载源代码
+    volumes:
+      - .:/app:rw
+    # 开发模式下的命令
+    # command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "mcp_server.py"]
+
+  # 覆盖数据库配置示例
+  postgres:
+    ports:
+      # 使用不同的端口
+      - "5433:5432"
+    # 添加额外的PostgreSQL配置
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=512MB"
+      - "-c"
+      - "max_connections=300"
+

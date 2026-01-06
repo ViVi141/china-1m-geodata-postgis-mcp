@@ -1,37 +1,166 @@
 version: '3.8'
 
+# 1:100万基础地理信息PostGIS MCP服务 - Docker编排
+# 包含PostgreSQL/PostGIS数据库服务和MCP服务器服务
+
 services:
+  # PostgreSQL/PostGIS 数据库服务
   postgres:
-    image: postgis/postgis:latest
+    image: postgis/postgis:16-3.4
     container_name: geodata-postgres
     environment:
-      POSTGRES_DB: gis_data
-      POSTGRES_USER: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-gis_data}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
     shm_size: 256mb
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gis_data"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gis_data}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    # 性能优化配置（可选，生产环境推荐）
-    # command:
-    #   - "postgres"
-    #   - "-c"
-    #   - "shared_buffers=256MB"
-    #   - "-c"
-    #   - "max_connections=200"
-    #   - "-c"
-    #   - "work_mem=16MB"
+      start_period: 30s
+    networks:
+      - geodata-network
+    # 性能优化配置（生产环境推荐）
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "effective_cache_size=1GB"
 
+  # MCP 服务器服务（stdio模式，供supergateway使用）
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: geodata-mcp-server
+    environment:
+      # 数据库连接配置（通过环境变量覆盖）
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-gis_data}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Python环境
+      PYTHONUNBUFFERED: 1
+    volumes:
+      # 挂载配置文件目录（可写，用于自动生成配置）
+      - ./config:/app/config
+      - ./specs:/app/specs:ro
+      # 挂载数据目录（如果需要访问GDB文件）
+      - ./data:/app/data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - geodata-network
+    # MCP服务器通过stdio通信，供supergateway使用
+    stdin_open: true
+    tty: true
+    # 不直接暴露端口，通过supergateway访问
+
+  # Supergateway - MCP网关服务（将stdio转换为SSE/WebSocket）
+  # 注意：需要挂载Docker socket和Docker CLI以访问其他容器
+  supergateway:
+    # 方案1: 使用自定义镜像（包含Docker CLI）- 推荐
+    build:
+      context: .
+      dockerfile: Dockerfile.supergateway
+    # 方案2: 使用官方镜像 + 挂载Docker CLI（如果方案1失败）
+    # image: supercorp/supergateway:latest
+    container_name: geodata-supergateway
+    environment:
+      # 日志级别
+      LOG_LEVEL: ${GATEWAY_LOG_LEVEL:-info}
+    ports:
+      # SSE端口（Server-Sent Events）
+      - "${GATEWAY_SSE_PORT:-8000}:8000"
+      # WebSocket端口（可选）
+      - "${GATEWAY_WS_PORT:-8001}:8001"
+    volumes:
+      # 挂载Docker socket以访问其他容器
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # 方案A: Linux - 挂载Docker CLI二进制文件（如果镜像内没有）
+      # - /usr/bin/docker:/usr/bin/docker:ro
+      # 方案B: Windows/WSL2 - Docker Desktop路径（如果需要）
+      # - /mnt/wsl/docker-desktop/cli-tools:/usr/local/bin/docker:ro
+      # 方案C: 使用Docker Desktop的Docker CLI（Windows）
+      # 注意：Windows上Docker CLI通常在Docker Desktop安装目录
+    depends_on:
+      - mcp-server
+    restart: unless-stopped
+    networks:
+      - geodata-network
+    # 使用sh -c执行docker命令（更兼容）
+    command:
+      - "--stdio"
+      - "sh"
+      - "-c"
+      - "docker exec -i geodata-mcp-server python /app/mcp_server.py"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - gateway
+
+  # 数据导入服务（可选，用于一次性数据导入任务）
+  data-importer:
+    build:
+      context: .
+      dockerfile: Dockerfile.importer
+    container_name: geodata-importer
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-gis_data}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PYTHONUNBUFFERED: 1
+    volumes:
+      # 挂载GDB文件目录
+      - .:/app/data:ro
+      # 挂载配置和规格文件（配置目录可写，用于自动生成）
+      - ./config:/app/config
+      - ./specs:/app/specs:ro
+      # 挂载分析输出目录（可写）
+      - ./analysis:/app/analysis
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - geodata-network
+    # 默认不启动，需要时手动运行
+    profiles:
+      - importer
+    command: ["python", "main.py", "--help"]
+
+# 网络配置
+networks:
+  geodata-network:
+    driver: bridge
+    name: geodata-network
+
+# 数据卷配置
 volumes:
   postgres_data:
     driver: local
-
+    name: geodata-postgres-data

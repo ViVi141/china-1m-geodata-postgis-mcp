@@ -196,6 +196,7 @@ python mcp_server.py
 - 必须使用**绝对路径**
 - 推荐设置 `cwd` 为项目根目录
 - 推荐使用虚拟环境
+- **Docker 部署用户**：请查看 [Docker 部署后的 MCP 配置指南](docs/MCP_DOCKER_CONFIG.md) ⭐
 - 详细配置说明和常见问题请查看 [MCP服务完整指南](docs/MCP_GUIDE.md)
 
 ## 📊 数据规格配置

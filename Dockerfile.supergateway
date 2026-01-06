@@ -1,0 +1,13 @@
+# Supergateway 自定义镜像 - 包含 Docker CLI
+FROM supercorp/supergateway:latest
+
+# 安装 Docker CLI
+# 方案1: 从 Docker 官方仓库安装（推荐）
+RUN apk add --no-cache docker-cli || \
+    (apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*) || \
+    (yum install -y docker && yum clean all) || \
+    echo "Docker CLI installation failed, will use mounted binary"
+
+# 如果上面的安装失败，可以挂载宿主机的 Docker CLI
+# 在 docker-compose.yml 中挂载: /usr/bin/docker:/usr/bin/docker:ro
+

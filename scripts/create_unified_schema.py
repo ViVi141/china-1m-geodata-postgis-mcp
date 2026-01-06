@@ -194,9 +194,11 @@ def create_unified_table_schema(
             columns.append("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
             
             # 创建表
+            # 注意：f-string 表达式中不能包含反斜杠，需要先定义换行符
+            newline_indent = ',\n                '
             create_sql = f"""
             CREATE TABLE {table_name} (
-                {',\n    '.join(columns)}
+                {newline_indent.join(columns)}
             );
             """
             
