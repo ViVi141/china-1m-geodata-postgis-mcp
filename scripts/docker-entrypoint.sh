@@ -55,20 +55,23 @@ EOF
     CONFIG_PASSWORD=$(grep '^password' "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d ' ')
     if [ -n "${CONFIG_PASSWORD}" ]; then
         PASSWORD_PREVIEW="${CONFIG_PASSWORD:0:3}***"
-        echo "验证: host=$(grep '^host' "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d ' '), password=${PASSWORD_PREVIEW}"
+        echo "验证: host=$(grep '^host' "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d ' '), password=${PASSWORD_PREVIEW} (长度: ${PASSWORD_LEN})"
     fi
 fi
 
-# 显示配置信息（不显示密码）
+# 显示配置信息（显示密码长度用于调试）
 echo "数据库配置:"
 echo "  主机: ${DB_HOST:-postgres}"
 echo "  端口: ${DB_PORT:-5432}"
 echo "  数据库: ${DB_NAME:-gis_data}"
 echo "  用户: ${DB_USER:-postgres}"
-echo "  密码: ${DB_PASSWORD:+***已设置***}"
-if [ -z "${DB_PASSWORD}" ]; then
-    echo "  警告: 密码未设置，使用默认值 'postgres'"
-    echo "  提示: 如果PostgreSQL使用不同密码，请设置环境变量 DB_PASSWORD 或 POSTGRES_PASSWORD"
+if [ -n "${DB_PASSWORD}" ]; then
+    PASSWORD_LEN=${#DB_PASSWORD}
+    PASSWORD_PREVIEW="${DB_PASSWORD:0:3}***"
+    echo "  密码: ${PASSWORD_PREVIEW} (长度: ${PASSWORD_LEN})"
+else
+    echo "  密码: 未设置，将使用默认值 'postgres'"
+    echo "  警告: 如果PostgreSQL使用不同密码，请设置环境变量 DB_PASSWORD 或 POSTGRES_PASSWORD"
 fi
 
 # 执行传入的命令

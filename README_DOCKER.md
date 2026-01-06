@@ -10,7 +10,8 @@
 POSTGRES_DB=gis_data
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password
-POSTGRES_PORT=5432
+POSTGRES_PORT=5432  # 宿主机端口（映射到容器内部的5432端口）
+```
 
 # Supergateway 配置（可选）
 GATEWAY_SSE_PORT=8000
@@ -100,9 +101,15 @@ docker-compose logs -f
 ## 📦 服务说明
 
 - **postgres**: PostgreSQL/PostGIS 数据库服务
+  - **重要**：端口说明
+    - 宿主机访问端口：`${POSTGRES_PORT:-5432}`（从宿主机连接时使用，如 `localhost:5234`）
+    - 容器内部端口：`5432`（**固定值**，容器间通信必须使用此端口）
+    - 端口映射格式：`宿主机端口:容器内部端口`，例如 `5234:5432`
 - **mcp-server**: MCP 服务器服务（stdio 模式，自动连接数据库）
+  - 通过容器网络连接到 `postgres:5432`（使用容器内部端口）
 - **supergateway**: MCP 网关服务（可选，将 stdio 转换为 SSE/WebSocket，使用 `--profile gateway` 启动）
 - **data-importer**: 数据导入服务（可选，使用 `--profile importer` 启动）
+  - 通过容器网络连接到 `postgres:5432`（使用容器内部端口）
 
 ## 🌐 Supergateway 使用
 

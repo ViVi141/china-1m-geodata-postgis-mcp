@@ -56,7 +56,8 @@ def reset_database(confirm=True):
     port = int(os.getenv('DB_PORT', 0)) or db_config.getint('port', 5432)
     database = os.getenv('DB_NAME') or db_config.get('database')
     user = os.getenv('DB_USER') or db_config.get('user')
-    password = os.getenv('DB_PASSWORD') or db_config.get('password', '')
+    # 直接从环境变量读取密码，避免配置文件中的特殊字符问题
+    password = os.getenv('DB_PASSWORD', '').strip() or db_config.get('password', '').strip()
     
     # 显示配置信息（显示密码前3个字符用于调试）
     password_preview = f"{password[:3]}***" if password and len(password) >= 3 else ("***已设置***" if password else "未设置")
@@ -168,11 +169,19 @@ def reset_database(confirm=True):
          print(f"  配置来源: {config_source}")
          
          # 在Docker环境中提供额外的诊断信息
-         if os.getenv('DB_PASSWORD'):
-             print(f"  环境变量 DB_PASSWORD 已设置 (长度: {len(os.getenv('DB_PASSWORD', ''))})")
-             print(f"  环境变量 DB_PASSWORD 前3个字符: {os.getenv('DB_PASSWORD', '')[:3] if len(os.getenv('DB_PASSWORD', '')) >= 3 else 'N/A'}")
+         env_password = os.getenv('DB_PASSWORD', '')
+         if env_password:
+             print(f"  环境变量 DB_PASSWORD 已设置 (长度: {len(env_password)})")
+             print(f"  环境变量 DB_PASSWORD 前3个字符: {env_password[:3] if len(env_password) >= 3 else 'N/A'}")
+             print(f"  环境变量 DB_PASSWORD 后3个字符: {env_password[-3:] if len(env_password) >= 3 else 'N/A'}")
+             if len(env_password) != len(password):
+                 print(f"  ⚠️  警告: 环境变量密码长度 ({len(env_password)}) 与实际使用的密码长度 ({len(password)}) 不一致！")
          else:
              print(f"  环境变量 DB_PASSWORD 未设置，使用配置文件中的密码")
+             # 读取配置文件中的实际密码长度
+             config_password = db_config.get('password', '').strip()
+             if config_password:
+                 print(f"  配置文件中的密码长度: {len(config_password)}")
          
          print("\n请检查:")
          print("1. PostgreSQL容器是否运行: docker ps")
