@@ -32,7 +32,7 @@ async def verify_data():
     
     if not tables:
         print("\n[WARN] 未找到任何表，可能还没有导入数据")
-        print("请先运行: python scripts/import_data.py")
+        print("请先运行: python scripts/setup_unified_database.py")
         return False
     
     print(f"\n找到 {len(tables)} 个表\n")

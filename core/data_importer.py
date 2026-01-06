@@ -3,6 +3,7 @@
 """
 
 import psycopg2
+import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
@@ -189,7 +190,7 @@ class DataImporter:
                                 record["geom"] = geom_wkt + " (空几何)"
                             else:
                                 record["geom"] = geom_wkt
-                        except Exception as e:
+                        except Exception:
                             # 如果转换失败，使用原始值
                             record["geom"] = str(record["geom"])
                     results.append(record)
@@ -205,13 +206,19 @@ class DataImporter:
     
     def _get_connection(self, database_config: Dict[str, Any]) -> psycopg2.extensions.connection:
         """获取数据库连接"""
-        return psycopg2.connect(
+        conn = psycopg2.connect(
             host=database_config.get('host', 'localhost'),
             port=database_config.get('port', 5432),
             database=database_config.get('database'),
             user=database_config.get('user'),
-            password=database_config.get('password')
+            password=database_config.get('password'),
+            client_encoding='UTF8'  # 确保使用UTF-8编码
         )
+        # 设置连接编码
+        with conn.cursor() as cur:
+            cur.execute("SET client_encoding TO 'UTF8';")
+        conn.commit()
+        return conn
     
     def _ensure_postgis(self, conn):
         """确保PostGIS扩展已安装"""
@@ -313,13 +320,19 @@ class DataImporter:
                             srid_result = cur.fetchone()
                             srid = srid_result[0] if srid_result else None
                             
+                            # 获取表的用途信息
+                            table_info = self._get_table_info(table_name)
+                            
                             geo_tables.append({
                                 "table_name": table_name,
+                                "description": table_info.get("description", ""),
+                                "category": table_info.get("category", ""),
+                                "layer_code": table_info.get("layer_code", ""),
                                 "record_count": count,
                                 "srid": srid
                             })
-                        except Exception as e:
-                            logger.warning(f"获取表 {table_name} 信息失败: {e}")
+                        except Exception as exc:
+                            logger.warning(f"获取表 {table_name} 信息失败: {exc}")
                 
                 return {
                     "tables": geo_tables,
@@ -420,10 +433,27 @@ class DataImporter:
         Returns:
             查询结果字典
         """
-        # 安全检查：只允许SELECT语句
+        # 安全检查：只允许SELECT查询，允许WITH语句（CTE），禁止INSERT/UPDATE/DELETE
         sql_upper = sql.strip().upper()
-        if not sql_upper.startswith("SELECT"):
-            raise ValueError("只允许执行SELECT查询语句")
+        
+        # 移除注释和空白，检查是否包含危险关键字
+        sql_clean = ' '.join(sql_upper.split())
+        
+        # 禁止的SQL关键字（不区分大小写）
+        forbidden_keywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TRUNCATE', 'GRANT', 'REVOKE']
+        for keyword in forbidden_keywords:
+            # 检查关键字是否作为独立单词出现（避免误判，如SELECT中的SELECT）
+            pattern = f'\\b{keyword}\\b'
+            if re.search(pattern, sql_clean):
+                raise ValueError(f"不允许执行包含 {keyword} 的SQL语句，只允许SELECT查询")
+        
+        # 必须包含SELECT（允许WITH ... SELECT）
+        if 'SELECT' not in sql_clean:
+            raise ValueError("SQL语句必须包含SELECT查询")
+        
+        # 检查是否以SELECT或WITH开头（允许WITH语句）
+        if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
+            raise ValueError("SQL语句必须以SELECT或WITH开头")
         
         conn = self._get_connection(database_config)
         
@@ -448,7 +478,7 @@ class DataImporter:
                             try:
                                 cur.execute("SELECT ST_AsText(%s)", (value,))
                                 record[col] = cur.fetchone()[0]
-                            except:
+                            except Exception:
                                 record[col] = str(value)
                         else:
                             record[col] = value
@@ -463,10 +493,73 @@ class DataImporter:
         finally:
             conn.close()
     
+    def _get_table_info(self, table_name: str) -> Dict[str, Any]:
+        """
+        从规格配置中获取表的用途信息
+        
+        Args:
+            table_name: 表名（统一表结构使用图层代码的小写，如boua、hyda等）
+            
+        Returns:
+            表的用途信息字典，包含description和category
+        """
+        try:
+            spec = self.spec_loader.load_spec("china_1m_2021")
+            layer_mapping = spec.get("layer_mapping", {})
+            
+            # 统一表结构使用图层代码的小写作为表名（如boua、hyda）
+            # 尝试直接通过表名（大写）查找图层
+            layer_code = table_name.upper()
+            if layer_code in layer_mapping:
+                layer_info = layer_mapping[layer_code]
+                return {
+                    "description": layer_info.get("description", ""),
+                    "category": layer_info.get("category", ""),
+                    "layer_code": layer_code
+                }
+            
+            # 如果没找到，尝试通过table_name字段查找（旧版表名映射）
+            for layer_code, layer_info in layer_mapping.items():
+                if layer_info.get("table_name") == table_name:
+                    return {
+                        "description": layer_info.get("description", ""),
+                        "category": layer_info.get("category", ""),
+                        "layer_code": layer_code
+                    }
+        except Exception as exc:
+            logger.debug(f"获取表信息失败: {exc}")
+        
+        return {
+            "description": "",
+            "category": "",
+            "layer_code": ""
+        }
+    
+    def _get_field_descriptions(self, table_name: str, spec_loader: SpecLoader) -> Dict[str, str]:
+        """
+        获取字段说明（占位方法，实际字段说明在FIELD_SPEC.md中）
+        
+        Args:
+            table_name: 表名
+            spec_loader: 规格加载器
+            
+        Returns:
+            字段说明字典
+        """
+        # 这里可以扩展，从FIELD_SPEC.md或其他地方加载字段说明
+        # 目前返回空字典，字段说明在verify_import中提示查看FIELD_SPEC.md
+        return {}
+    
     def _verify_table(self, cur, table_name: str) -> Dict[str, Any]:
         """验证单个表"""
+        # 获取表的用途信息
+        table_info = self._get_table_info(table_name)
+        
         result = {
             "table_name": table_name,
+            "description": table_info.get("description", ""),
+            "category": table_info.get("category", ""),
+            "layer_code": table_info.get("layer_code", ""),
             "record_count": 0,
             "srid": None,
             "bbox": None,
@@ -519,7 +612,7 @@ class DataImporter:
             result["invalid_geometries"] = cur.fetchone()[0]
             
             # 字段信息（包含字段说明）
-            cur.execute(f"""
+            cur.execute("""
                 SELECT column_name, data_type
                 FROM information_schema.columns
                 WHERE table_schema = 'public' 

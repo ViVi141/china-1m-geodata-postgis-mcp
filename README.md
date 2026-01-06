@@ -158,7 +158,7 @@ python mcp_server.py
 
 #### 在MCP客户端中配置
 
-在MCP客户端配置文件中添加配置。详细配置说明请查看 [MCP配置文档](docs/MCP_CONFIG.md)。
+在MCP客户端配置文件中添加配置。详细配置说明请查看 [MCP服务完整指南](docs/MCP_GUIDE.md)。
 
 **基本配置示例（使用绝对路径）：**
 
@@ -196,7 +196,7 @@ python mcp_server.py
 - 必须使用**绝对路径**
 - 推荐设置 `cwd` 为项目根目录
 - 推荐使用虚拟环境
-- 详细配置说明和常见问题请查看 [MCP配置文档](docs/MCP_CONFIG.md)
+- 详细配置说明和常见问题请查看 [MCP服务完整指南](docs/MCP_GUIDE.md)
 
 ## 📊 数据规格配置
 
@@ -229,7 +229,21 @@ python mcp_server.py
 
 ## 🛠️ MCP工具
 
-**注意：MCP服务专注于数据查询和分析，不提供数据导入功能。数据导入应使用脚本 `scripts/import_data.py` 完成。详细导入说明请查看 [快速开发与测试](docs/QUICK_TEST.md)。**
+**注意：MCP服务专注于数据查询和分析，不提供数据导入功能。数据导入应使用脚本完成。**
+
+**推荐工作流程（统一表结构）：**
+
+**方式1：使用统一工具集（最简单）⭐⭐⭐**
+```bash
+python scripts/setup_unified_database.py
+```
+
+**方式2：分步执行**
+1. 使用 `scripts/parse_tile_schema.py` 解析图幅结构
+2. 使用 `scripts/create_unified_schema.py` 创建统一表结构
+3. 使用 `scripts/import_all_tiles.py` 导入所有图幅数据
+
+详细说明请查看 [统一表结构导入指南](docs/UNIFIED_SCHEMA_GUIDE.md)。
 
 **重要提示：**
 1. **查询前必须先使用 `list_tile_codes` 查看有哪些图幅可用**，然后根据目的地地理位置确定需要查询的图幅。不要只查询F49图幅！详细说明请查看 [图幅编号指南](docs/TILE_CODE_GUIDE.md)。
@@ -291,7 +305,7 @@ python mcp_server.py
   - 空间过滤：`ST_Intersects(geom1, geom2)` 或 `geom && ST_MakeEnvelope(...)`
 - `database_config` (可选): 数据库连接配置
 
-**注意：** 出于安全考虑，只允许执行SELECT查询语句。详细的使用指南和PostGIS函数参考请查看 [MCP工具使用指南](docs/MCP_TOOLS_GUIDE.md)。
+**注意：** 出于安全考虑，只允许执行SELECT查询语句。详细的使用指南和PostGIS函数参考请查看 [MCP服务完整指南](docs/MCP_GUIDE.md)。
 
 ## 📁 项目结构
 
@@ -309,26 +323,29 @@ python mcp_server.py
 ├── config/                    # 配置文件
 │   ├── database.ini.example  # 数据库配置模板
 │   └── database.ini          # 数据库配置（不提交）
-├── scripts/                   # 工具脚本
-│   ├── start_docker.bat       # Windows启动Docker
-│   ├── start_docker.sh        # Linux/Mac启动Docker
-│   ├── start_mcp.bat          # Windows启动MCP
-│   ├── start_mcp.sh           # Linux/Mac启动MCP
-│   ├── reset_database.py      # 重置数据库
-│   ├── reset_database.bat      # Windows重置脚本
-│   ├── reset_database.sh      # Linux/Mac重置脚本
-│   ├── check_connection.py    # 测试数据库连接
-│   ├── import_data.py         # 导入GDB数据
+├── scripts/                   # 工具脚本（详见 scripts/README.md）
+│   ├── setup_unified_database.py  # ⭐⭐⭐ 统一工具集（强烈推荐）
+│   ├── parse_tile_schema.py   # ⭐ 完全解析图幅结构
+│   ├── create_unified_schema.py  # ⭐ 创建统一表结构
+│   ├── import_all_tiles.py    # ⭐ 导入所有图幅数据
+│   ├── check_layers.py        # 检查GDB图层
+│   ├── generate_field_spec.py # 生成字段说明文档
 │   ├── verify_data.py         # 验证导入数据
-│   ├── query_data.py          # 查询数据
+│   ├── check_connection.py    # 测试数据库连接
 │   ├── check_geometry_quality.py  # 检查几何质量
-│   └── check_layers.py        # 检查GDB图层
+│   ├── reset_database.py      # 重置数据库
+│   ├── start_docker.bat/sh    # 启动Docker（Windows/Linux）
+│   └── start_mcp.bat/sh       # 启动MCP（Windows/Linux）
 ├── examples/                  # 示例代码
 │   ├── __init__.py
 │   └── example_usage.py       # 使用示例
 ├── docs/                      # 文档目录
-│   ├── DATA_SPEC.md           # 数据规格说明
-│   └── QUICK_TEST.md          # 快速开发与测试
+│   ├── UNIFIED_SCHEMA_GUIDE.md  # ⭐ 统一表结构导入指南
+│   ├── MCP_GUIDE.md            # ⭐ MCP服务完整指南（配置、工具使用、查询流程）
+│   ├── FIELD_SPEC.md           # 字段说明文档
+│   ├── TABLE_USAGE_GUIDE.md    # ⭐ 表用途和单位转换指南（重要）
+│   ├── TILE_CODE_GUIDE.md     # 图幅编号指南
+│   └── QUERY_EXAMPLES.md       # 查询示例
 ├── docker-compose.yml         # Docker Compose配置
 ├── docker-compose.alpine.yml  # Alpine版本配置
 ├── init.sql                   # 数据库初始化脚本
@@ -371,7 +388,29 @@ python mcp_server.py
 
 在支持MCP的AI助手中，可以直接调用工具进行数据查询和分析：
 
-**注意：数据导入应使用脚本完成，不在MCP服务中提供。使用 `python scripts/import_data.py <gdb_path>` 导入数据。**
+**注意：数据导入应使用脚本完成，不在MCP服务中提供。**
+
+**推荐导入方式（统一表结构）：**
+
+**方式1：使用统一工具集（推荐）⭐⭐⭐**
+```bash
+# 一键完成所有步骤
+python scripts/setup_unified_database.py
+```
+
+**方式2：分步执行**
+```bash
+# 1. 解析图幅结构
+python scripts/parse_tile_schema.py F49.gdb --output analysis
+
+# 2. 创建统一表结构
+python scripts/create_unified_schema.py --analysis analysis/F49_complete_analysis.json
+
+# 3. 导入所有图幅数据
+python scripts/import_all_tiles.py
+```
+
+详细说明请查看 [统一表结构导入指南](docs/UNIFIED_SCHEMA_GUIDE.md)。
 
 **1. 列出图幅代码（必须先执行）**
 
@@ -402,27 +441,51 @@ python mcp_server.py
 
 ### 使用工具脚本
 
+**推荐工作流程（统一表结构）：**
+
+**方式1：使用统一工具集（推荐）⭐⭐⭐**
+```bash
+# 一键完成所有步骤
+python scripts/setup_unified_database.py
+
+# 验证数据
+python scripts/verify_data.py
+```
+
+**方式2：分步执行**
+```bash
+# 1. 解析图幅结构（首次设置）
+python scripts/parse_tile_schema.py F49.gdb --output analysis
+
+# 2. 创建统一表结构
+python scripts/create_unified_schema.py --analysis analysis/F49_complete_analysis.json
+
+# 3. 导入所有图幅数据
+python scripts/import_all_tiles.py
+
+# 4. 验证数据
+python scripts/verify_data.py
+```
+
+**其他常用脚本：**
+
 ```bash
 # 测试数据库连接
 python scripts/check_connection.py
 
-# 导入数据（支持指定GDB文件或目录）
-python scripts/import_data.py <gdb_path>
-python scripts/import_data.py --dir <directory>  # 批量导入目录中的所有GDB
-
-# 验证数据
-python scripts/verify_data.py
-
-# 查询数据
-python scripts/query_data.py
-
 # 检查几何质量
 python scripts/check_geometry_quality.py
 
-# 检查GDB图层信息（支持指定GDB文件或目录）
+# 检查GDB图层信息
 python scripts/check_layers.py <gdb_path>
-python scripts/check_layers.py --dir <directory>  # 批量检查目录中的所有GDB
+
+# 重置数据库
+python scripts/reset_database.py
 ```
+
+**详细说明：**
+- 统一表结构导入：查看 [统一表结构导入指南](docs/UNIFIED_SCHEMA_GUIDE.md)
+- 脚本功能说明：查看 [scripts/README.md](scripts/README.md)
 
 ## 🛠️ 故障排除
 
@@ -450,8 +513,8 @@ python scripts/check_layers.py --dir <directory>  # 批量检查目录中的所�
 
 ### 问题5: 数据必须先导入才能查询
 **解决方案**:
-- 使用 `import_geodata` 工具先导入数据
-- 导入完成后才能使用 `query_data` 查询
+- 使用 `scripts/setup_unified_database.py` 或 `scripts/import_all_tiles.py` 导入数据
+- 导入完成后才能使用MCP服务的 `query_data` 工具查询
 - 使用 `list_tables` 查看已导入的表
 
 ### 问题6: 导入时没有进度显示
@@ -475,14 +538,18 @@ Email: 747384120@qq.com
 
 ## 📚 相关文档
 
-- [数据规格说明](docs/DATA_SPEC.md) - 数据字段和规格说明
-- [快速开发与测试](docs/QUICK_TEST.md) - 快速开发指南和测试步骤
-- [MCP工具使用指南](docs/MCP_TOOLS_GUIDE.md) - **LLM使用工具指南，包含工具选择决策树、PostGIS函数参考和使用示例**
-- [MCP配置文档](docs/MCP_CONFIG.md) - **MCP客户端配置指南，包含配置文件位置、配置示例和常见问题**
-- [查询示例](docs/QUERY_EXAMPLES.md) - **常用PostGIS空间查询示例，包含自然保护区查询等实际案例**
+### 核心文档（必读）
+- [统一表结构导入指南](docs/UNIFIED_SCHEMA_GUIDE.md) - ⭐ **推荐**：统一表结构创建和导入指南
+- [MCP服务完整指南](docs/MCP_GUIDE.md) - ⭐ **重要**：MCP配置、工具使用和查询工作流程的完整指南
+
+### 参考文档
+- [表用途和单位转换指南](docs/TABLE_USAGE_GUIDE.md) - **⭐ 重要：各表用途速查表和单位转换方法，包含boua表查询指南，帮助LLM避免常见错误**
 - [字段说明文档](docs/FIELD_SPEC.md) - **所有表的字段详细说明，帮助LLM正确理解字段含义，避免猜测**
 - [图幅编号指南](docs/TILE_CODE_GUIDE.md) - **1:100万图幅编号说明，如何根据地理位置确定图幅**
-- [标准查询工作流程](docs/QUERY_WORKFLOW.md) - **LLM查询数据的标准流程，必须按顺序执行，避免常见错误**
+- [查询示例](docs/QUERY_EXAMPLES.md) - **常用PostGIS空间查询示例，包含自然保护区查询等实际案例**
+
+### 开发和测试文档
+- [脚本说明](scripts/README.md) - 所有脚本的功能说明和使用方法
 
 ---
 

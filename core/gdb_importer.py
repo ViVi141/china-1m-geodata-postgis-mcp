@@ -264,11 +264,22 @@ class GDBImporter:
                         if clean_name in data_columns:
                             field_mapping[field_name] = clean_name
                     
-                    # 准备插入SQL
-                    field_names = ['geom', 'tile_code'] + [field_mapping[f] 
-                                                           for f in properties.keys() 
-                                                           if f in field_mapping]
-                    placeholders = [f'ST_GeomFromText(%s, {srid})', '%s'] + ['%s'] * len(field_mapping)
+                    # 确保字段顺序与数据库表字段顺序一致
+                    # 按照数据库字段顺序构建field_names
+                    mapped_db_columns = []
+                    for db_col in data_columns:
+                        # 找到对应的GDB字段名
+                        gdb_field = None
+                        for gdb_name, db_name in field_mapping.items():
+                            if db_name == db_col:
+                                gdb_field = gdb_name
+                                break
+                        if gdb_field:
+                            mapped_db_columns.append(db_col)
+                    
+                    # 准备插入SQL（按照数据库字段顺序）
+                    field_names = ['geom', 'tile_code'] + mapped_db_columns
+                    placeholders = [f'ST_GeomFromText(%s, {srid})', '%s'] + ['%s'] * len(mapped_db_columns)
                     
                     insert_sql = f"""
                     INSERT INTO public.{table_name} ({', '.join(field_names)})
@@ -309,11 +320,26 @@ class GDBImporter:
                             
                             wkt_geom = geom.wkt
                             
-                            # 构建属性值
+                            # 构建属性值（按照field_names的顺序，确保与数据库字段顺序一致）
                             values = [wkt_geom, tile_code]
-                            for field_name in properties.keys():
-                                if field_name in field_mapping:
-                                    values.append(feature['properties'].get(field_name))
+                            # 按照mapped_db_columns的顺序构建值
+                            for db_col in mapped_db_columns:
+                                # 找到对应的GDB字段名
+                                gdb_field = None
+                                for gdb_name, db_name in field_mapping.items():
+                                    if db_name == db_col:
+                                        gdb_field = gdb_name
+                                        break
+                                if gdb_field:
+                                    value = feature['properties'].get(gdb_field)
+                                    # 确保字符串值被正确处理
+                                    if value is not None:
+                                        # Python 3中str已经是unicode，但确保编码正确
+                                        if isinstance(value, bytes):
+                                            value = value.decode('utf-8', errors='ignore')
+                                        elif not isinstance(value, str):
+                                            value = str(value)
+                                    values.append(value)
                             
                             batch.append(tuple(values))
                             

@@ -90,7 +90,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="list_tables",
-            description="列出PostgreSQL/PostGIS数据库中所有已导入的地理数据表。**这是查询数据的第二步，在list_tile_codes之后执行。**返回每个表的名称、记录数、坐标系(SRID)等信息。**重要：1)必须先使用list_tile_codes查看有哪些图幅。2)不要盲目猜测表名，必须使用此工具查看可用表。3)了解各表的用途：administrative_boundary_area(行政境界面，不是自然保护区)、regional_boundary_area(区域界线面，可能包含自然保护区)、vegetation_area(植被面，可能包含自然保护区)、place_name_natural(自然地名，包含地名但可能不完整)。**",
+            description="列出PostgreSQL/PostGIS数据库中所有已导入的地理数据表。**这是查询数据的第二步，在list_tile_codes之后执行。**返回每个表的名称、用途说明、分类、记录数、坐标系(SRID)等信息。**重要提示：1)必须先使用list_tile_codes查看有哪些图幅。2)不要盲目猜测表名，必须使用此工具查看可用表。3)根据查询需求选择正确的表：查询行政区面积使用boua表（行政境界面，注意：只包含区/县/县级市，不包含地级市；同一行政区域可能被分割成多个记录，查询时必须使用GROUP BY name/pac和ST_Union(geom)合并），查询水系使用hyda/hydl/hydp表，查询道路使用lrdl表，查询居民地使用resa/resp表，查询植被使用vega表（可能包含自然保护区），查询区域界线使用brga表（可能包含自然保护区）。4)表名通常是小写的图层代码，如boua、hyda、lrdl等。5)单位转换：计算面积必须使用ST_Area(geom::geography)/1000000（shape_area是度²，不能直接转换），计算长度必须使用ST_Length(geom::geography)/1000（shape_length是度，不能直接转换）。详细表用途和单位转换说明请查看docs/TABLE_USAGE_GUIDE.md。**",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -110,7 +110,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="verify_import",
-            description="验证PostgreSQL/PostGIS中已导入的数据，检查数据完整性、坐标系、几何有效性、空间范围等。**这是查询数据的第三步，在list_tables之后执行。**返回每个表的记录数、坐标系(SRID)、边界框(bbox)、无效几何数量、字段信息（包含字段说明）等。**这是了解表结构和字段含义的重要工具，在查询数据前必须先使用此工具查看字段说明，不要猜测字段含义。**重要提示：1)name字段在1:100万数据中经常为空，不能仅通过名称查询。2)需要使用空间范围(bbox)和图幅代码(tile_code)进行查询。3)自然保护区可能在vegetation_area或regional_boundary_area表中，不在administrative_boundary_area表中。详细字段说明请查看docs/FIELD_SPEC.md。",
+            description="验证PostgreSQL/PostGIS中已导入的数据，检查数据完整性、坐标系、几何有效性、空间范围等。**这是查询数据的第三步，在list_tables之后执行。**返回每个表的用途说明、分类、记录数、坐标系(SRID)、边界框(bbox)、无效几何数量、字段信息（包含字段说明）等。**这是了解表结构和字段含义的重要工具，在查询数据前必须先使用此工具查看表的用途和字段说明，不要猜测字段含义。**重要提示：1)返回结果包含表的description（用途说明）和category（分类），帮助选择正确的表。2)name字段在1:100万数据中经常为空，不能仅通过名称查询。3)需要使用空间范围(bbox)和图幅代码(tile_code)进行查询。4)查询行政区面积使用boua表（行政境界面），查询水系使用hyda/hydl/hydp表，查询道路使用lrdl表。详细字段说明请查看docs/FIELD_SPEC.md。",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -134,7 +134,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="query_data",
-            description="查询PostgreSQL/PostGIS中的空间数据，支持空间过滤和属性过滤。返回匹配的记录，包括所有字段和几何对象（以WKT格式）。适用于简单的空间查询，如：按边界框查询、按几何相交查询、按属性过滤等。**重要：1)必须按顺序执行：先list_tile_codes→再list_tables→再verify_import→最后query_data。2)查询前必须先使用list_tile_codes查看有哪些图幅，然后根据目的地地理位置确定需要查询的图幅（不要只查F49），使用attribute_filter按tile_code过滤，例如{\"tile_code\": \"F49\"}或{\"tile_code\": [\"F49\", \"F50\"]}。3)查询前必须先使用verify_import查看字段说明，了解每个字段的含义，不要猜测字段含义。4)name字段经常为空，不能仅通过名称查询，必须结合空间范围查询。5)自然保护区可能在vegetation_area或regional_boundary_area表中，不在administrative_boundary_area表中。**对于复杂的空间分析（如计算面积、距离、缓冲区、空间连接等），应使用execute_sql工具配合PostGIS函数。",
+            description="查询PostgreSQL/PostGIS中的空间数据，支持空间过滤和属性过滤。返回匹配的记录，包括所有字段和几何对象（以WKT格式）。适用于简单的空间查询，如：按边界框查询、按几何相交查询、按属性过滤等。**重要：1)必须按顺序执行：先list_tile_codes→再list_tables→再verify_import→最后query_data。2)查询前必须先使用list_tile_codes查看有哪些图幅，然后根据目的地地理位置确定需要查询的图幅（不要只查F49），使用attribute_filter按tile_code过滤，例如{\"tile_code\": \"F49\"}或{\"tile_code\": [\"F49\", \"F50\"]}。3)查询前必须先使用list_tables和verify_import查看表的用途说明，选择正确的表：查询行政区面积使用boua表（注意：boua表只包含区/县/县级市，不包含地级市；同一行政区域可能被分割成多个记录，需要合并计算总面积），查询水系使用hyda/hydl/hydp表，查询道路使用lrdl表，查询居民地使用resa/resp表。4)name字段经常为空，不能仅通过名称查询，必须结合空间范围查询。**对于复杂的空间分析（如计算面积、距离、缓冲区、空间连接、合并同一行政区域的多个记录等），应使用execute_sql工具配合PostGIS函数。",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -180,34 +180,14 @@ async def list_tools() -> List[Tool]:
             }
         ),
         Tool(
-            name="list_tables",
-            description="列出PostgreSQL/PostGIS数据库中所有已导入的地理数据表。返回每个表的名称、记录数、坐标系(SRID)等信息。使用此工具可以了解数据库中有哪些表可用，以及每个表的基本统计信息。在查询数据之前，应该先使用此工具查看可用的表。",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "database_config": {
-                        "type": "object",
-                        "description": "数据库连接配置（可选）",
-                        "properties": {
-                            "host": {"type": "string"},
-                            "port": {"type": "integer"},
-                            "database": {"type": "string"},
-                            "user": {"type": "string"},
-                            "password": {"type": "string"}
-                        }
-                    }
-                }
-            }
-        ),
-        Tool(
             name="execute_sql",
-            description="在PostgreSQL/PostGIS数据库中执行SQL查询。这是进行复杂空间分析和计算的主要工具。支持所有PostGIS空间函数，如：ST_Area(计算面积)、ST_Distance(计算距离)、ST_Buffer(缓冲区)、ST_Intersects(相交判断)、ST_Within(包含判断)、ST_Union(合并)、ST_Intersection(求交)、ST_Centroid(中心点)、ST_Envelope(边界框)等。使用此工具可以进行：1)空间分析（面积、距离、缓冲区、空间关系判断）；2)空间计算（合并、求交、简化、转换坐标系）；3)复杂查询（多表连接、聚合统计、空间分组）；4)数据统计（按区域统计、按图幅统计等）。**重要：1)必须按顺序执行：先list_tile_codes→再list_tables→再verify_import→最后execute_sql。2)查询前必须先使用list_tile_codes查看有哪些图幅，然后根据目的地地理位置确定需要查询的图幅（不要只查F49），在SQL中使用WHERE tile_code IN ('F49', 'F50', ...)过滤。3)查询前必须先使用verify_import查看字段说明，了解每个字段的含义，不要猜测字段含义。4)name字段经常为空，不能仅通过名称查询，必须结合空间范围查询。5)自然保护区可能在vegetation_area或regional_boundary_area表中，不在administrative_boundary_area表中。6)计算面积使用ST_Area(geom::geography)/1000000转换为平方公里。**注意：只支持SELECT查询，不支持INSERT/UPDATE/DELETE。",
+            description="在PostgreSQL/PostGIS数据库中执行SQL查询。这是进行复杂空间分析和计算的主要工具。支持所有PostGIS空间函数和WITH语句（CTE），如：ST_Area(计算面积)、ST_Distance(计算距离)、ST_Buffer(缓冲区)、ST_Intersects(相交判断)、ST_Within(包含判断)、ST_Union(合并)、ST_Intersection(求交)、ST_Centroid(中心点)、ST_Envelope(边界框)等。使用此工具可以进行：1)空间分析（面积、距离、缓冲区、空间关系判断）；2)空间计算（合并、求交、简化、转换坐标系）；3)复杂查询（多表连接、聚合统计、空间分组、WITH子查询）；4)数据统计（按区域统计、按图幅统计等）。**重要：1)必须按顺序执行：先list_tile_codes→再list_tables→再verify_import→最后execute_sql。2)查询前必须先使用list_tile_codes查看有哪些图幅，然后根据目的地地理位置确定需要查询的图幅（不要只查F49），在SQL中使用WHERE tile_code IN ('F49', 'F50', ...)过滤。3)查询前必须先使用list_tables和verify_import查看表的用途说明，选择正确的表：查询行政区面积使用boua表（注意：boua表只包含区/县/县级市，不包含地级市；同一行政区域可能被分割成多个记录，查询时需要使用GROUP BY name/pac和ST_Union(geom)合并计算总面积），查询水系使用hyda/hydl/hydp表，查询道路使用lrdl表，查询居民地使用resa/resp表，查询植被使用vega表，查询区域界线使用brga表。4)name字段经常为空，不能仅通过名称查询，必须结合空间范围查询。5)单位转换：计算面积必须使用ST_Area(geom::geography)/1000000转换为平方公里（shape_area字段是度²，不能直接转换）；计算长度必须使用ST_Length(geom::geography)/1000转换为公里（shape_length字段是度，不能直接转换）。6)查询boua表时，如果查询某个行政区域的完整面积，必须使用GROUP BY和ST_Union合并所有分割的部分。**注意：支持SELECT查询和WITH语句（CTE），不支持INSERT/UPDATE/DELETE/DROP/CREATE/ALTER等修改操作。详细表用途和单位转换说明请查看docs/TABLE_USAGE_GUIDE.md。",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "sql": {
                         "type": "string",
-                        "description": "要执行的SQL SELECT语句。可以使用PostGIS空间函数，例如：计算面积使用 ST_Area(geom::geography)/1000000（转换为平方公里），计算距离使用 ST_Distance(geom1::geography, geom2::geography)/1000（转换为公里），空间过滤使用 ST_Intersects(geom1, geom2) 或 geom && ST_MakeEnvelope(...)。常用PostGIS函数：ST_Area(计算面积)、ST_Distance(计算距离)、ST_Buffer(缓冲区)、ST_Intersects(相交)、ST_Within(包含)、ST_Contains(包含)、ST_Overlaps(重叠)、ST_Union(合并)、ST_Intersection(求交)、ST_Centroid(中心点)、ST_Envelope(边界框)、ST_AsText(转为WKT)、ST_GeomFromText(从WKT创建)、ST_MakeEnvelope(创建边界框)、ST_Transform(坐标系转换)。"
+                        "description": "要执行的SQL SELECT语句或WITH语句（CTE）。可以使用PostGIS空间函数和WITH子查询，例如：计算面积使用 ST_Area(geom::geography)/1000000（转换为平方公里，注意：shape_area字段是度²，不能直接转换），计算距离使用 ST_Distance(geom1::geography, geom2::geography)/1000（转换为公里），计算长度使用 ST_Length(geom::geography)/1000（转换为公里，注意：shape_length字段是度，不能直接转换），空间过滤使用 ST_Intersects(geom1, geom2) 或 geom && ST_MakeEnvelope(...)。常用PostGIS函数：ST_Area(计算面积)、ST_Distance(计算距离)、ST_Length(计算长度)、ST_Buffer(缓冲区)、ST_Intersects(相交)、ST_Within(包含)、ST_Contains(包含)、ST_Overlaps(重叠)、ST_Union(合并)、ST_Intersection(求交)、ST_Centroid(中心点)、ST_Envelope(边界框)、ST_AsText(转为WKT)、ST_GeomFromText(从WKT创建)、ST_MakeEnvelope(创建边界框)、ST_Transform(坐标系转换)。支持WITH语句进行复杂查询，例如：WITH temp AS (SELECT ...) SELECT ... FROM temp。详细表用途和单位转换说明请查看docs/TABLE_USAGE_GUIDE.md。"
                     },
                     "database_config": {
                         "type": "object",
