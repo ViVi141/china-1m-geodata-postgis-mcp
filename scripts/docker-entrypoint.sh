@@ -51,8 +51,12 @@ user = ${DB_USER:-postgres}
 password = ${DB_PASSWORD:-postgres}
 EOF
     echo "配置文件已生成/更新: ${CONFIG_FILE}"
-    # 验证配置文件内容（不显示完整密码）
-    echo "验证: host=$(grep '^host' "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d ' '), password=***"
+    # 验证配置文件内容（显示密码前3个字符用于调试）
+    CONFIG_PASSWORD=$(grep '^password' "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d ' ')
+    if [ -n "${CONFIG_PASSWORD}" ]; then
+        PASSWORD_PREVIEW="${CONFIG_PASSWORD:0:3}***"
+        echo "验证: host=$(grep '^host' "${CONFIG_FILE}" | cut -d'=' -f2 | tr -d ' '), password=${PASSWORD_PREVIEW}"
+    fi
 fi
 
 # 显示配置信息（不显示密码）

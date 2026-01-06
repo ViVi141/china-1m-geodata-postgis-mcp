@@ -1,6 +1,5 @@
-version: '3.8'
-
 # 1:100万基础地理信息PostGIS MCP服务 - Docker编排
+# 注意：version 字段在新版 Docker Compose 中已废弃，可以移除
 # 包含PostgreSQL/PostGIS数据库服务和MCP服务器服务
 
 services:

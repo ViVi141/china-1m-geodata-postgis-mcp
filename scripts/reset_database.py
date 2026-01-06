@@ -5,6 +5,7 @@
 
 import psycopg2
 import sys
+import os
 from pathlib import Path
 import configparser
 
@@ -49,21 +50,34 @@ def reset_database(confirm=True):
     
     db_config = config['postgresql']
     
-    # 显示配置信息（不显示密码）
-    print(f"数据库连接信息:")
-    print(f"  主机: {db_config.get('host', 'localhost')}")
-    print(f"  端口: {db_config.get('port', '5432')}")
-    print(f"  数据库: {db_config.get('database', '')}")
-    print(f"  用户: {db_config.get('user', '')}")
-    print(f"  密码: {'***已设置***' if db_config.get('password') else '未设置'}")
+    # 在Docker环境中，优先使用环境变量（如果设置）
+    # 这样可以避免挂载的配置文件覆盖容器环境变量的问题
+    host = os.getenv('DB_HOST') or db_config.get('host', 'localhost')
+    port = int(os.getenv('DB_PORT', 0)) or db_config.getint('port', 5432)
+    database = os.getenv('DB_NAME') or db_config.get('database')
+    user = os.getenv('DB_USER') or db_config.get('user')
+    password = os.getenv('DB_PASSWORD') or db_config.get('password', '')
     
+    # 显示配置信息（显示密码前3个字符用于调试）
+    password_preview = f"{password[:3]}***" if password and len(password) >= 3 else ("***已设置***" if password else "未设置")
+    config_source = "环境变量" if os.getenv('DB_PASSWORD') or os.getenv('DB_HOST') else "配置文件"
+    
+    print(f"数据库连接信息 (来源: {config_source}):")
+    print(f"  主机: {host}")
+    print(f"  端口: {port}")
+    print(f"  数据库: {database}")
+    print(f"  用户: {user}")
+    print(f"  密码: {password_preview} (长度: {len(password)})")
+    
+    # 尝试连接，提供更详细的错误信息
     try:
         conn = psycopg2.connect(
-            host=db_config.get('host', 'localhost'),
-            port=db_config.getint('port', 5432),
-            database=db_config.get('database'),
-            user=db_config.get('user'),
-            password=db_config.get('password')
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password,
+            connect_timeout=5
         )
         
         with conn.cursor() as cur:
@@ -147,16 +161,35 @@ def reset_database(confirm=True):
         return True
         
     except psycopg2.OperationalError as e:
-        print(f"错误: 无法连接数据库: {e}")
-        print("\n请检查:")
-        print("1. PostgreSQL容器是否运行: docker ps")
-        print("2. 数据库密码是否正确:")
-        print("   - 检查 .env 文件中的 POSTGRES_PASSWORD")
-        print("   - 确保与PostgreSQL容器启动时使用的密码一致")
-        print("   - 或者检查环境变量 DB_PASSWORD 或 POSTGRES_PASSWORD")
-        print("3. 配置文件路径: {}".format(config_file))
-        print("4. 在Docker环境中，确保环境变量已正确传递到容器")
-        return False
+         print(f"错误: 无法连接数据库: {e}")
+         print("\n诊断信息:")
+         print(f"  尝试使用的密码前3个字符: {password[:3] if len(password) >= 3 else 'N/A'}")
+         print(f"  密码长度: {len(password)}")
+         print(f"  配置来源: {config_source}")
+         
+         # 在Docker环境中提供额外的诊断信息
+         if os.getenv('DB_PASSWORD'):
+             print(f"  环境变量 DB_PASSWORD 已设置 (长度: {len(os.getenv('DB_PASSWORD', ''))})")
+             print(f"  环境变量 DB_PASSWORD 前3个字符: {os.getenv('DB_PASSWORD', '')[:3] if len(os.getenv('DB_PASSWORD', '')) >= 3 else 'N/A'}")
+         else:
+             print(f"  环境变量 DB_PASSWORD 未设置，使用配置文件中的密码")
+         
+         print("\n请检查:")
+         print("1. PostgreSQL容器是否运行: docker ps")
+         print("2. 验证PostgreSQL容器的实际密码:")
+         print("   docker inspect geodata-postgres | grep -A 5 POSTGRES_PASSWORD")
+         print("   或者:")
+         print("   docker-compose exec postgres env | grep POSTGRES_PASSWORD")
+         print("3. 检查 .env 文件中的 POSTGRES_PASSWORD 是否与容器启动时的密码一致")
+         print("4. 如果PostgreSQL容器使用了旧密码（可能来自旧的volume），需要:")
+         print("   - 方法1: 查看容器实际使用的密码，修改 .env 文件使其一致")
+         print("   - 方法2: 重新创建容器和数据卷（注意：会删除数据）:")
+         print("     docker-compose down")
+         print("     docker volume rm geodata-postgres-data")
+         print("     修改 .env 文件中的 POSTGRES_PASSWORD")
+         print("     docker-compose up -d")
+         print("5. 配置文件路径: {}".format(config_file))
+         return False
     except Exception as e:
         print(f"错误: {e}")
         import traceback
