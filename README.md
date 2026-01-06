@@ -182,6 +182,13 @@ docker-compose logs -f postgres
 
 详见 `docker-compose.yml` 和 `init.sql`
 
+**使用1Panel部署（推荐1Panel用户）：**
+
+如果您使用1Panel管理服务器，可以使用1Panel的可视化MCP服务配置：
+1. 先启动基础服务：`docker-compose up -d`
+2. 在1Panel中添加MCP服务，类型选择 `npx`，启动命令填写：`docker exec -i geodata-mcp-server python /app/mcp_server.py`
+3. 详细配置说明请查看 [Docker快速开始指南](README_DOCKER.md#方式3基础版--1panel-mcp服务推荐用于1panel用户)
+
 #### 方式2：本地PostgreSQL
 
 **创建数据库和启用PostGIS：**

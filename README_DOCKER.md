@@ -32,6 +32,59 @@ docker-compose up -d
 docker-compose --profile gateway up -d
 ```
 
+#### 方式3：基础版 + 1Panel MCP服务（推荐用于1Panel用户）⭐⭐
+
+使用1Panel的可视化MCP服务管理，基于Supergateway实现。
+
+**步骤1：启动基础服务**
+
+```bash
+docker-compose up -d
+```
+
+**步骤2：在1Panel中配置MCP服务**
+
+1. 登录1Panel管理界面
+2. 进入 **MCP服务** 或 **应用商店** → **MCP服务**
+3. 点击 **添加MCP服务** 或 **新建服务**
+4. 按以下配置填写：
+
+| 配置项 | 配置值 | 说明 |
+|--------|--------|------|
+| **类型** | `npx` | 使用npx类型 |
+| **启动命令** | `docker exec -i geodata-mcp-server python /app/mcp_server.py` | 在MCP容器中执行Python脚本 |
+| **端口** | `8000` | SSE服务端口（可根据需要修改） |
+| **外部访问路径** | `http://192.168.1.1:8000` | 完整的基础URL（替换为您的服务器IP和端口）<br>示例：`http://192.168.1.1:8000` 或 `http://your-domain.com:8000` |
+| **容器名称** | `geodata-mcp-server` | MCP服务器容器名称（必须与docker-compose.yml中一致） |
+| **输出类型** | `sse` | 使用SSE（Server-Sent Events）输出 |
+| **SSE路径** | `/sse` | SSE端点路径（默认为/sse） |
+
+**配置说明**：
+- **外部访问路径**：填写完整的访问URL，例如：
+  - 内网访问：`http://192.168.1.1:8000`
+  - 公网访问：`http://your-domain.com:8000`
+  - 本地访问：`http://localhost:8000`
+- 确保端口号与"端口"配置项一致
+
+**重要提示**：
+- 确保 `geodata-mcp-server` 容器已运行（通过 `docker-compose ps` 检查）
+- 端口 `8000` 必须未被占用，且防火墙已开放该端口
+- 如果需要同时使用WebSocket，可以在1Panel中配置第二个MCP服务，使用 `ws` 输出类型和端口 `8001`
+- 1Panel的MCP服务会自动处理Docker容器的连接，无需手动配置Docker socket
+- 如果使用公网访问，请确保服务器安全配置正确
+
+**步骤3：验证服务**
+
+在1Panel中查看MCP服务状态，或访问：
+- SSE端点：`http://192.168.1.1:8000/sse`（替换为您配置的外部访问路径 + /sse）
+- 健康检查：`http://192.168.1.1:8000/health`（替换为您配置的外部访问路径 + /health）
+
+**优势**：
+- ✅ 可视化配置，操作简单
+- ✅ 1Panel自动管理服务生命周期
+- ✅ 支持服务监控和日志查看
+- ✅ 无需手动管理Supergateway容器
+
 ### 3. 查看服务状态
 
 ```bash
@@ -57,7 +110,11 @@ Supergateway 可以将 stdio 模式的 MCP 服务器转换为 HTTP/SSE/WebSocket
 
 ### 启动 Supergateway
 
-#### 方式1：使用 Docker Compose（需要先构建自定义镜像）
+#### 方式1：使用 1Panel MCP服务（推荐用于1Panel用户）⭐⭐⭐
+
+详见上面的 **方式3：基础版 + 1Panel MCP服务** 部分。
+
+#### 方式2：使用 Docker Compose（需要先构建自定义镜像）
 
 ```bash
 # 先构建包含 Docker CLI 的自定义镜像
@@ -67,7 +124,7 @@ docker-compose build supergateway
 docker-compose --profile gateway up -d
 ```
 
-#### 方式2：使用独立脚本（推荐，避免 Docker CLI 问题）⭐⭐
+#### 方式3：使用独立脚本（推荐，避免 Docker CLI 问题）⭐⭐
 
 **Windows:**
 ```powershell
@@ -86,6 +143,14 @@ docker-compose up -d
 # 使用独立脚本启动 Supergateway
 ./scripts/start-supergateway.sh
 ```
+
+#### 方式对比
+
+| 方式 | 适用场景 | 优势 | 缺点 |
+|------|---------|------|------|
+| **1Panel MCP服务** | 使用1Panel管理服务器 | ✅ 可视化配置<br>✅ 自动管理生命周期<br>✅ 内置监控和日志 | ❌ 需要1Panel环境 |
+| **Docker Compose** | 熟悉Docker Compose | ✅ 一键部署<br>✅ 配置集中管理 | ❌ 需要构建镜像<br>❌ 可能遇到Docker CLI问题 |
+| **独立脚本** | 灵活部署场景 | ✅ 简单直接<br>✅ 避免Docker CLI问题 | ❌ 需手动管理进程 |
 
 ### 访问端点
 
