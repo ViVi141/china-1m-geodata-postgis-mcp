@@ -8,11 +8,12 @@ import sys
 import argparse
 from pathlib import Path
 
-# 添加scripts目录到路径
-sys.path.insert(0, str(Path(__file__).parent / "scripts"))
+# 使用正确的模块导入路径
+# main.py 在项目根目录，scripts/ 是子目录
+# 因此应该使用 scripts.reset_database 而不是直接导入 reset_database
 
-from reset_database import reset_database
-from setup_unified_database import (
+from scripts.reset_database import reset_database
+from scripts.setup_unified_database import (
     step1_parse_tile,
     step2_create_schema,
     step3_import_data

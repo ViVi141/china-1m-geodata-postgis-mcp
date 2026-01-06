@@ -24,6 +24,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
 ENV C_INCLUDE_PATH=/usr/include/gdal
 
+# 设置Python路径，确保可以导入scripts模块
+# main.py 使用 scripts.reset_database，所以需要将 /app 添加到路径
+ENV PYTHONPATH=/app:${PYTHONPATH}
+
 # 复制依赖文件
 COPY requirements.txt .
 
