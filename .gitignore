@@ -44,12 +44,15 @@ ENV/
 config/database.ini
 config/data_sources.json
 *.env
+# 但允许提交示例配置文件
+!.env.example
 .env.local
 
 # 测试和临时文件
 test_*.py
 fix_*.py
-reset_*.py
+# 注意：scripts/reset_database.py 是项目必需的脚本，不应该被忽略
+# reset_*.py
 *.tmp
 *.bak
 *.cache
@@ -65,7 +68,12 @@ reset_*.py
 *.geojson
 
 # 分析结果和临时输出
+# 注意：analysis/ 目录中的示例文件应该被提交作为参考
+# 允许示例分析结果文件，但忽略其他用户生成的分析结果
 analysis/
+!analysis/F49_complete_analysis.json
+!analysis/F49_table_designs.sql
+!analysis/F49_table_summary.md
 output/
 temp/
 
