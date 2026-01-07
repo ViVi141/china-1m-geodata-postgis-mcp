@@ -6,4 +6,3 @@ China 1M GeoData PostGIS MCP Service
 """
 
 __version__ = "1.0.0"
-

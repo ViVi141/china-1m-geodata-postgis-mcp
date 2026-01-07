@@ -13,11 +13,7 @@ import logging
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import (
-    Resource,
-    Tool,
-    TextContent
-)
+from mcp.types import Resource, Tool, TextContent
 
 from core.data_importer import DataImporter
 from core.config_manager import ConfigManager
@@ -38,17 +34,19 @@ data_importer = DataImporter()
 async def list_resources() -> List[Resource]:
     """列出可用的资源"""
     resources = []
-    
+
     # 列出可用的数据源
     data_sources = config_manager.list_data_sources()
     for source_name in data_sources:
-        resources.append(Resource(
-            uri=f"datasource://{source_name}",
-            name=f"数据源: {source_name}",
-            description=f"已配置的数据源: {source_name}",
-            mimeType="application/json"
-        ))
-    
+        resources.append(
+            Resource(
+                uri=f"datasource://{source_name}",
+                name=f"数据源: {source_name}",
+                description=f"已配置的数据源: {source_name}",
+                mimeType="application/json",
+            )
+        )
+
     return resources
 
 
@@ -59,7 +57,7 @@ async def read_resource(uri: str) -> str:
         source_name = uri.replace("datasource://", "")
         source_config = config_manager.get_data_source(source_name)
         return json.dumps(source_config, ensure_ascii=False, indent=2)
-    
+
     else:
         raise ValueError(f"未知的资源URI: {uri}")
 
@@ -82,11 +80,11 @@ async def list_tools() -> List[Tool]:
                             "port": {"type": "integer"},
                             "database": {"type": "string"},
                             "user": {"type": "string"},
-                            "password": {"type": "string"}
-                        }
+                            "password": {"type": "string"},
+                        },
                     }
-                }
-            }
+                },
+            },
         ),
         Tool(
             name="list_tables",
@@ -102,11 +100,11 @@ async def list_tools() -> List[Tool]:
                             "port": {"type": "integer"},
                             "database": {"type": "string"},
                             "user": {"type": "string"},
-                            "password": {"type": "string"}
-                        }
+                            "password": {"type": "string"},
+                        },
                     }
-                }
-            }
+                },
+            },
         ),
         Tool(
             name="verify_import",
@@ -116,7 +114,7 @@ async def list_tools() -> List[Tool]:
                 "properties": {
                     "table_name": {
                         "type": "string",
-                        "description": "要验证的表名（可选，如果不提供则验证所有表）。建议先使用list_tables查看可用表。"
+                        "description": "要验证的表名（可选，如果不提供则验证所有表）。建议先使用list_tables查看可用表。",
                     },
                     "database_config": {
                         "type": "object",
@@ -126,21 +124,21 @@ async def list_tools() -> List[Tool]:
                             "port": {"type": "integer"},
                             "database": {"type": "string"},
                             "user": {"type": "string"},
-                            "password": {"type": "string"}
-                        }
-                    }
-                }
-            }
+                            "password": {"type": "string"},
+                        },
+                    },
+                },
+            },
         ),
         Tool(
             name="query_data",
-            description="查询PostgreSQL/PostGIS中的空间数据，支持空间过滤和属性过滤。返回匹配的记录，包括所有字段和几何对象（以WKT格式）。适用于简单的空间查询，如：按边界框查询、按几何相交查询、按属性过滤等。**重要：1)必须按顺序执行：先list_tile_codes→再list_tables→再verify_import→最后query_data。2)查询前必须先使用list_tile_codes查看有哪些图幅，然后根据目的地地理位置确定需要查询的图幅（不要只查F49），使用attribute_filter按tile_code过滤，例如{\"tile_code\": \"F49\"}或{\"tile_code\": [\"F49\", \"F50\"]}。3)查询前必须先使用list_tables和verify_import查看表的用途说明，选择正确的表：查询行政区面积使用boua表（注意：boua表只包含区/县/县级市，不包含地级市；同一行政区域可能被分割成多个记录，需要合并计算总面积），查询水系使用hyda/hydl/hydp表，查询道路使用lrdl表，查询居民地使用resa/resp表。4)name字段经常为空，不能仅通过名称查询，必须结合空间范围查询。**对于复杂的空间分析（如计算面积、距离、缓冲区、空间连接、合并同一行政区域的多个记录等），应使用execute_sql工具配合PostGIS函数。",
+            description='查询PostgreSQL/PostGIS中的空间数据，支持空间过滤和属性过滤。返回匹配的记录，包括所有字段和几何对象（以WKT格式）。适用于简单的空间查询，如：按边界框查询、按几何相交查询、按属性过滤等。**重要：1)必须按顺序执行：先list_tile_codes→再list_tables→再verify_import→最后query_data。2)查询前必须先使用list_tile_codes查看有哪些图幅，然后根据目的地地理位置确定需要查询的图幅（不要只查F49），使用attribute_filter按tile_code过滤，例如{"tile_code": "F49"}或{"tile_code": ["F49", "F50"]}。3)查询前必须先使用list_tables和verify_import查看表的用途说明，选择正确的表：查询行政区面积使用boua表（注意：boua表只包含区/县/县级市，不包含地级市；同一行政区域可能被分割成多个记录，需要合并计算总面积），查询水系使用hyda/hydl/hydp表，查询道路使用lrdl表，查询居民地使用resa/resp表。4)name字段经常为空，不能仅通过名称查询，必须结合空间范围查询。**对于复杂的空间分析（如计算面积、距离、缓冲区、空间连接、合并同一行政区域的多个记录等），应使用execute_sql工具配合PostGIS函数。',
             inputSchema={
                 "type": "object",
                 "properties": {
                     "table_name": {
                         "type": "string",
-                        "description": "表名（必须先使用list_tables查看可用表）"
+                        "description": "表名（必须先使用list_tables查看可用表）",
                     },
                     "spatial_filter": {
                         "type": "object",
@@ -148,21 +146,21 @@ async def list_tools() -> List[Tool]:
                         "properties": {
                             "bbox": {
                                 "type": "array",
-                                "description": "边界框 [minx, miny, maxx, maxy]，单位为度（经纬度）"
+                                "description": "边界框 [minx, miny, maxx, maxy]，单位为度（经纬度）",
                             },
                             "geometry": {
                                 "type": "string",
-                                "description": "WKT格式的几何对象，如 'POINT(113.3 23.1)' 或 'POLYGON((...))'"
-                            }
-                        }
+                                "description": "WKT格式的几何对象，如 'POINT(113.3 23.1)' 或 'POLYGON((...))'",
+                            },
+                        },
                     },
                     "attribute_filter": {
                         "type": "object",
-                        "description": "属性过滤条件（可选），键值对形式，如 {\"tile_code\": \"F49\"}"
+                        "description": '属性过滤条件（可选），键值对形式，如 {"tile_code": "F49"}',
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "返回记录数限制（默认100）"
+                        "description": "返回记录数限制（默认100）",
                     },
                     "database_config": {
                         "type": "object",
@@ -172,12 +170,12 @@ async def list_tools() -> List[Tool]:
                             "port": {"type": "integer"},
                             "database": {"type": "string"},
                             "user": {"type": "string"},
-                            "password": {"type": "string"}
-                        }
-                    }
+                            "password": {"type": "string"},
+                        },
+                    },
                 },
-                "required": ["table_name"]
-            }
+                "required": ["table_name"],
+            },
         ),
         Tool(
             name="execute_sql",
@@ -187,7 +185,7 @@ async def list_tools() -> List[Tool]:
                 "properties": {
                     "sql": {
                         "type": "string",
-                        "description": "要执行的SQL SELECT语句或WITH语句（CTE）。可以使用PostGIS空间函数和WITH子查询，例如：计算面积使用 ST_Area(geom::geography)/1000000（转换为平方公里，注意：shape_area字段是度²，不能直接转换），计算距离使用 ST_Distance(geom1::geography, geom2::geography)/1000（转换为公里），计算长度使用 ST_Length(geom::geography)/1000（转换为公里，注意：shape_length字段是度，不能直接转换），空间过滤使用 ST_Intersects(geom1, geom2) 或 geom && ST_MakeEnvelope(...)。常用PostGIS函数：ST_Area(计算面积)、ST_Distance(计算距离)、ST_Length(计算长度)、ST_Buffer(缓冲区)、ST_Intersects(相交)、ST_Within(包含)、ST_Contains(包含)、ST_Overlaps(重叠)、ST_Union(合并)、ST_Intersection(求交)、ST_Centroid(中心点)、ST_Envelope(边界框)、ST_AsText(转为WKT)、ST_GeomFromText(从WKT创建)、ST_MakeEnvelope(创建边界框)、ST_Transform(坐标系转换)。支持WITH语句进行复杂查询，例如：WITH temp AS (SELECT ...) SELECT ... FROM temp。详细表用途和单位转换说明请查看docs/TABLE_USAGE_GUIDE.md。"
+                        "description": "要执行的SQL SELECT语句或WITH语句（CTE）。可以使用PostGIS空间函数和WITH子查询，例如：计算面积使用 ST_Area(geom::geography)/1000000（转换为平方公里，注意：shape_area字段是度²，不能直接转换），计算距离使用 ST_Distance(geom1::geography, geom2::geography)/1000（转换为公里），计算长度使用 ST_Length(geom::geography)/1000（转换为公里，注意：shape_length字段是度，不能直接转换），空间过滤使用 ST_Intersects(geom1, geom2) 或 geom && ST_MakeEnvelope(...)。常用PostGIS函数：ST_Area(计算面积)、ST_Distance(计算距离)、ST_Length(计算长度)、ST_Buffer(缓冲区)、ST_Intersects(相交)、ST_Within(包含)、ST_Contains(包含)、ST_Overlaps(重叠)、ST_Union(合并)、ST_Intersection(求交)、ST_Centroid(中心点)、ST_Envelope(边界框)、ST_AsText(转为WKT)、ST_GeomFromText(从WKT创建)、ST_MakeEnvelope(创建边界框)、ST_Transform(坐标系转换)。支持WITH语句进行复杂查询，例如：WITH temp AS (SELECT ...) SELECT ... FROM temp。详细表用途和单位转换说明请查看docs/TABLE_USAGE_GUIDE.md。",
                     },
                     "database_config": {
                         "type": "object",
@@ -197,13 +195,13 @@ async def list_tools() -> List[Tool]:
                             "port": {"type": "integer"},
                             "database": {"type": "string"},
                             "user": {"type": "string"},
-                            "password": {"type": "string"}
-                        }
-                    }
+                            "password": {"type": "string"},
+                        },
+                    },
                 },
-                "required": ["sql"]
-            }
-        )
+                "required": ["sql"],
+            },
+        ),
     ]
 
 
@@ -213,45 +211,68 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     try:
         if name == "verify_import":
             result = await verify_import_handler(arguments)
-            return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
-        
+            return [
+                TextContent(
+                    type="text", text=json.dumps(result, ensure_ascii=False, indent=2)
+                )
+            ]
+
         elif name == "query_data":
             result = await query_data_handler(arguments)
-            return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
-        
+            return [
+                TextContent(
+                    type="text", text=json.dumps(result, ensure_ascii=False, indent=2)
+                )
+            ]
+
         elif name == "list_tables":
             result = await list_tables_handler(arguments)
-            return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
-        
+            return [
+                TextContent(
+                    type="text", text=json.dumps(result, ensure_ascii=False, indent=2)
+                )
+            ]
+
         elif name == "list_tile_codes":
             result = await list_tile_codes_handler(arguments)
-            return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
-        
+            return [
+                TextContent(
+                    type="text", text=json.dumps(result, ensure_ascii=False, indent=2)
+                )
+            ]
+
         elif name == "execute_sql":
             result = await execute_sql_handler(arguments)
-            return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
-        
+            return [
+                TextContent(
+                    type="text", text=json.dumps(result, ensure_ascii=False, indent=2)
+                )
+            ]
+
         else:
             raise ValueError(f"未知的工具: {name}")
-    
+
     except Exception as e:
         logger.error(f"工具执行错误: {e}", exc_info=True)
-        return [TextContent(type="text", text=json.dumps({"error": str(e)}, ensure_ascii=False))]
+        return [
+            TextContent(
+                type="text", text=json.dumps({"error": str(e)}, ensure_ascii=False)
+            )
+        ]
 
 
 async def verify_import_handler(arguments: Dict[str, Any]) -> Dict[str, Any]:
     """处理数据验证请求"""
     table_name = arguments.get("table_name")
     database_config = arguments.get("database_config")
-    
+
     if not database_config:
         database_config = config_manager.get_default_database_config()
-    
+
     result = await data_importer.verify_data(
-        table_name=table_name,
-        database_config=database_config
+        table_name=table_name, database_config=database_config
     )
-    
+
     return result
 
 
@@ -262,28 +283,28 @@ async def query_data_handler(arguments: Dict[str, Any]) -> Dict[str, Any]:
     attribute_filter = arguments.get("attribute_filter")
     limit = arguments.get("limit", 100)
     database_config = arguments.get("database_config")
-    
+
     if not database_config:
         database_config = config_manager.get_default_database_config()
-    
+
     result = await data_importer.query_data(
         table_name=table_name,
         spatial_filter=spatial_filter,
         attribute_filter=attribute_filter,
         limit=limit,
-        database_config=database_config
+        database_config=database_config,
     )
-    
+
     return result
 
 
 async def list_tile_codes_handler(arguments: Dict[str, Any]) -> Dict[str, Any]:
     """处理列出图幅代码请求"""
     database_config = arguments.get("database_config")
-    
+
     if not database_config:
         database_config = config_manager.get_default_database_config()
-    
+
     result = await data_importer.list_tile_codes(database_config=database_config)
     return result
 
@@ -291,10 +312,10 @@ async def list_tile_codes_handler(arguments: Dict[str, Any]) -> Dict[str, Any]:
 async def list_tables_handler(arguments: Dict[str, Any]) -> Dict[str, Any]:
     """处理列出表请求"""
     database_config = arguments.get("database_config")
-    
+
     if not database_config:
         database_config = config_manager.get_default_database_config()
-    
+
     result = await data_importer.list_tables(database_config=database_config)
     return result
 
@@ -303,10 +324,10 @@ async def execute_sql_handler(arguments: Dict[str, Any]) -> Dict[str, Any]:
     """处理SQL执行请求"""
     sql = arguments["sql"]
     database_config = arguments.get("database_config")
-    
+
     if not database_config:
         database_config = config_manager.get_default_database_config()
-    
+
     result = await data_importer.execute_sql(sql=sql, database_config=database_config)
     return result
 
@@ -315,17 +336,14 @@ async def main():
     """主函数"""
     # 输出启动信息到stderr（MCP服务器使用stdio通信，stdout用于协议）
     import sys
+
     print("MCP服务器正在启动...", file=sys.stderr)
     print("等待MCP客户端连接...", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
-    
+
     async with stdio_server() as (read_stream, write_stream):
         print("MCP服务器已就绪，开始处理请求...", file=sys.stderr)
-        await app.run(
-            read_stream,
-            write_stream,
-            app.create_initialization_options()
-        )
+        await app.run(read_stream, write_stream, app.create_initialization_options())
 
 
 if __name__ == "__main__":
@@ -333,12 +351,14 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         import sys
+
         print("\nMCP服务器已停止", file=sys.stderr)
         sys.exit(0)
     except Exception as e:
         import sys
+
         print(f"错误: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
-

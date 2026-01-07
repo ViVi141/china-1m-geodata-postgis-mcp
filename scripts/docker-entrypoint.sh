@@ -10,32 +10,44 @@ CONFIG_FILE="${CONFIG_DIR}/database.ini"
 # 创建配置目录
 mkdir -p "${CONFIG_DIR}"
 
-# 检查是否需要更新配置文件
-# 如果配置文件不存在，或host为localhost，或环境变量已设置，则更新
+# 在Docker容器中，总是从环境变量更新配置以确保一致性
+# 这样可以避免挂载的配置文件（可能指向其他数据库）覆盖容器环境变量的问题
 NEED_UPDATE=false
 
+# 检查是否在Docker环境中（通过检查环境变量或容器标识）
+# 如果环境变量已设置，或者配置文件不存在，或者host不是postgres，都需要更新
 if [ ! -f "${CONFIG_FILE}" ]; then
     NEED_UPDATE=true
     echo "配置文件不存在，将生成..."
-elif grep -q "host = localhost" "${CONFIG_FILE}" 2>/dev/null; then
-    NEED_UPDATE=true
-    echo "检测到配置文件使用localhost，将更新为容器环境配置..."
 elif [ -n "${DB_HOST}" ] || [ -n "${DB_PASSWORD}" ] || [ -n "${DB_NAME}" ] || [ -n "${DB_USER}" ]; then
-    # 如果环境变量已设置，检查配置是否需要更新
-    # 读取当前配置中的密码（如果有）
-    CURRENT_PASSWORD=$(grep "^password" "${CONFIG_FILE}" 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
-    ENV_PASSWORD="${DB_PASSWORD:-postgres}"
+    # 环境变量已设置，强制使用环境变量（避免挂载的配置文件覆盖）
+    NEED_UPDATE=true
+    echo "检测到环境变量已设置，将使用环境变量更新配置文件..."
     
-    # 如果密码不匹配，需要更新
-    if [ "${CURRENT_PASSWORD}" != "${ENV_PASSWORD}" ]; then
-        NEED_UPDATE=true
-        echo "检测到配置文件密码与环境变量不一致，将更新..."
-    elif [ -n "${DB_HOST}" ]; then
+    # 读取当前配置用于对比（仅用于日志）
+    if [ -f "${CONFIG_FILE}" ]; then
         CURRENT_HOST=$(grep "^host" "${CONFIG_FILE}" 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
-        if [ "${CURRENT_HOST}" != "${DB_HOST}" ]; then
-            NEED_UPDATE=true
-            echo "检测到配置文件主机名与环境变量不一致，将更新..."
+        CURRENT_PASSWORD=$(grep "^password" "${CONFIG_FILE}" 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
+        ENV_HOST="${DB_HOST:-postgres}"
+        ENV_PASSWORD="${DB_PASSWORD:-postgres}"
+        
+        if [ "${CURRENT_HOST}" != "${ENV_HOST}" ] || [ "${CURRENT_PASSWORD}" != "${ENV_PASSWORD}" ]; then
+            echo "  当前配置: host=${CURRENT_HOST}, password=${CURRENT_PASSWORD:0:3}***"
+            echo "  环境变量: host=${ENV_HOST}, password=${ENV_PASSWORD:0:3}***"
+            echo "  将更新配置文件以匹配环境变量"
         fi
+    fi
+elif grep -q "host = localhost" "${CONFIG_FILE}" 2>/dev/null; then
+    # 配置文件使用localhost，在Docker环境中应该使用服务名
+    NEED_UPDATE=true
+    echo "检测到配置文件使用localhost，将更新为容器环境配置（postgres）..."
+else
+    # 检查配置文件中的host是否为postgres（Docker服务名）
+    CURRENT_HOST=$(grep "^host" "${CONFIG_FILE}" 2>/dev/null | cut -d'=' -f2 | tr -d ' ' || echo "")
+    if [ "${CURRENT_HOST}" != "postgres" ] && [ -n "${CURRENT_HOST}" ]; then
+        # 如果host不是postgres，可能是挂载的本地配置文件，需要更新
+        NEED_UPDATE=true
+        echo "检测到配置文件host为 '${CURRENT_HOST}'，在Docker环境中应使用 'postgres'，将更新..."
     fi
 fi
 
