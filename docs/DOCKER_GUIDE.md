@@ -295,9 +295,214 @@ services:
           memory: 1G
 ```
 
+## 🌐 平台特定说明
+
+### Windows 部署
+
+适用于 Windows 10/11，使用 Docker Desktop + WSL2。
+
+#### 前置要求
+
+- **Windows 10/11**，已启用 **WSL2**（推荐）
+- 安装 **Docker Desktop**，并在 Settings 中开启：
+  - Use the WSL 2 based engine
+- 确认 `docker` 与 `docker-compose`（或 `docker compose`）可用：
+  ```powershell
+  docker --version
+  docker-compose --version
+  ```
+
+#### 快速部署
+
+**1. 创建环境变量文件**
+
+```powershell
+Set-Content .env @"
+POSTGRES_DB=gis_data
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_PORT=5432
+GATEWAY_SSE_PORT=8000
+GATEWAY_WS_PORT=8001
+GATEWAY_LOG_LEVEL=info
+"@
+```
+
+**2. 启动服务**
+
+```powershell
+# 基础版（不使用 Supergateway）
+docker-compose up -d
+
+# 完整版（使用 Supergateway）
+docker-compose --profile gateway up -d
+
+# 或使用独立脚本启动 Supergateway（推荐）
+.\scripts\start-supergateway.bat
+```
+
+**3. 验证服务**
+
+```powershell
+# 检查 PostgreSQL
+docker-compose exec postgres psql -U postgres -d gis_data -c "SELECT PostGIS_Version();"
+
+# 检查 Supergateway（启用 gateway profile 时）
+curl.exe -i http://localhost:8000/sse --max-time 2
+```
+
+#### 常见问题
+
+**Supergateway 不断重启，提示 "docker: not found"**
+
+**解决方案**：使用独立脚本启动 Supergateway：
+```powershell
+.\scripts\start-supergateway.bat
+```
+
+**其他常见问题**：
+- **权限或路径问题**：确保项目目录已在 Docker Desktop 的文件共享列表中（Settings -> Resources -> File Sharing）
+- **WSL2 未启用**：在 PowerShell（管理员）执行 `wsl --install` 并重启
+- **端口冲突**：修改 `.env` 端口后重新启动
+
+---
+
+### Linux 部署
+
+适用于 Linux 系统（Ubuntu 20.04+, Debian 11+, CentOS 8+等）。
+
+#### 前置要求
+
+- **Linux 系统**（Ubuntu 20.04+, Debian 11+, CentOS 8+, 或其他主流发行版）
+- **Docker 20.10+**
+- **Docker Compose 2.0+**（或使用 `docker compose` 命令）
+
+#### 安装 Docker
+
+**Ubuntu/Debian:**
+
+```bash
+# 更新包索引
+sudo apt-get update
+
+# 安装必要的依赖
+sudo apt-get install -y ca-certificates curl gnupg lsb-release
+
+# 添加Docker官方GPG密钥
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# 添加Docker仓库
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# 安装Docker
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# 启动Docker服务
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# 将当前用户添加到docker组（可选，避免每次使用sudo）
+sudo usermod -aG docker $USER
+# 需要重新登录才能生效
+```
+
+**CentOS/RHEL:**
+
+```bash
+# 安装必要的工具
+sudo yum install -y yum-utils
+
+# 添加Docker仓库
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+# 安装Docker
+sudo yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# 启动Docker服务
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# 将当前用户添加到docker组
+sudo usermod -aG docker $USER
+```
+
+#### 快速部署
+
+**1. 创建环境变量文件**
+
+```bash
+cat > .env <<EOF
+POSTGRES_DB=gis_data
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_PORT=5432
+GATEWAY_SSE_PORT=8000
+GATEWAY_WS_PORT=8001
+GATEWAY_LOG_LEVEL=info
+EOF
+```
+
+**2. 启动服务**
+
+```bash
+# 基础版（不使用 Supergateway）
+docker-compose up -d
+
+# 完整版（使用 Supergateway）
+docker-compose --profile gateway up -d
+
+# 或使用独立脚本启动 Supergateway（推荐）
+chmod +x scripts/start-supergateway.sh
+./scripts/start-supergateway.sh
+```
+
+**3. 验证服务**
+
+```bash
+# 检查PostgreSQL
+docker-compose exec postgres psql -U postgres -d gis_data -c "SELECT PostGIS_Version();"
+
+# 检查Supergateway（如果启用）
+curl -i --max-time 2 http://localhost:8000/sse
+```
+
+#### 安全建议
+
+**1. 修改默认密码**
+
+```bash
+# 生成强密码
+openssl rand -base64 32
+
+# 更新.env文件
+POSTGRES_PASSWORD=<生成的强密码>
+```
+
+**2. 防火墙配置**
+
+```bash
+# Ubuntu/Debian (UFW)
+sudo ufw allow 5432/tcp  # PostgreSQL（仅内网）
+sudo ufw allow 8000/tcp  # Supergateway SSE
+sudo ufw allow 8001/tcp  # Supergateway WebSocket
+
+# CentOS/RHEL (firewalld)
+sudo firewall-cmd --permanent --add-port=5432/tcp
+sudo firewall-cmd --permanent --add-port=8000/tcp
+sudo firewall-cmd --permanent --add-port=8001/tcp
+sudo firewall-cmd --reload
+```
+
+---
+
 ## 📚 相关文档
 
 - [Docker Compose 官方文档](https://docs.docker.com/compose/)
 - [PostGIS 官方文档](https://postgis.net/documentation/)
 - [MCP 协议文档](https://modelcontextprotocol.io/)
+- [MCP配置指南](MCP_SERVER_CONFIG.md) - MCP客户端配置
 

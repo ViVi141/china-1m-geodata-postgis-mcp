@@ -807,10 +807,165 @@ MaxKB 的配置格式与其他客户端不同，`mcpServers` 下直接是 `url` 
 
 ---
 
+---
+
+## 特殊场景：1Panel 配置
+
+本指南说明如何在1Panel中使用项目自带的Supergateway网关配置MCP服务。
+
+> **⚠️ 重要**：Supergateway 默认端口为 **8000**（SSE）和 **8001**（WebSocket）。如果使用自定义端口（如900），请相应修改配置。
+
+### 前置条件
+
+1. ✅ 已成功导入数据到PostgreSQL
+2. ✅ 已启动基础Docker服务（postgres和mcp-server）
+3. ✅ 1Panel已安装并运行
+
+### 配置步骤
+
+#### 步骤1：启动Supergateway
+
+**方式A：使用独立脚本（推荐）⭐⭐⭐**
+
+```bash
+# 进入项目目录
+cd /path/to/china-1m-geodata-postgis-mcp
+
+# 启动Supergateway（使用默认端口8000）
+./scripts/start-supergateway.sh
+
+# 如果8000端口被占用，可以自定义端口（如900）
+export GATEWAY_PORT=900
+./scripts/start-supergateway.sh
+```
+
+**方式B：使用docker-compose**
+
+```bash
+# 启动Supergateway（使用默认端口8000）
+docker compose --profile gateway up -d supergateway
+
+# 如果8000端口被占用，可以自定义端口（如900）
+GATEWAY_SSE_PORT=900 docker compose --profile gateway up -d supergateway
+```
+
+#### 步骤2：验证Supergateway运行
+
+```bash
+# 检查容器状态
+docker ps | grep supergateway
+
+# 查看日志
+docker logs geodata-supergateway
+
+# 注意：Supergateway 默认不提供 /health 端点，使用 /sse 验证（会保持长连接）
+curl -i --max-time 2 http://localhost:8000/sse
+```
+
+#### 步骤3：在1Panel中配置MCP服务
+
+如果1Panel支持HTTP/SSE方式连接已运行的Supergateway：
+
+1. **登录1Panel管理界面**
+2. **进入MCP服务管理**
+3. **添加MCP服务**
+4. **填写配置信息**
+
+| 配置项 | 配置值 | 说明 |
+|--------|--------|------|
+| **类型** | `http` 或 `sse` | 使用HTTP/SSE方式连接 |
+| **外部访问路径** | `http://your-server-ip:8000/sse` | Supergateway的SSE端点URL |
+| **端口** | `8000` | Supergateway的端口 |
+| **transport** | `sse` | **必需**，传输协议类型 |
+
+**JSON配置示例**（如果1Panel支持）：
+
+**标准格式**：
+```json
+{
+  "mcpServers": {
+    "china-1m-geodata-postgis-mcp": {
+      "url": "http://your-server-ip:8000/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
+
+**MaxKB格式**（MaxKB使用不同的配置格式）：
+```json
+{
+  "mcpServers": {
+    "url": "http://your-server-ip:8000/sse",
+    "transport": "sse"
+  }
+}
+```
+
+### 使用systemd服务（生产环境推荐）
+
+为了确保Supergateway在系统重启后自动启动：
+
+```bash
+# 创建服务文件
+sudo tee /etc/systemd/system/geodata-supergateway.service > /dev/null <<EOF
+[Unit]
+Description=GeoData Supergateway Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+ExecStart=/usr/bin/docker run --rm \
+    --name geodata-supergateway \
+    --network geodata-network \
+    -p 8000:8000 \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
+    -v /usr/bin/docker:/usr/bin/docker:ro \
+    supercorp/supergateway:latest \
+    --stdio \
+    sh -c "docker exec -i geodata-mcp-server python /app/mcp_server.py" \
+    --port 8000 \
+    --mode sse
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 启用并启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable geodata-supergateway
+sudo systemctl start geodata-supergateway
+sudo systemctl status geodata-supergateway
+```
+
+### 常见问题
+
+**问题1：docker: not found 错误**
+
+**解决方案**：
+1. 确保宿主机已安装Docker CLI
+2. 使用方式C（手动运行）时，确保挂载了Docker CLI
+
+**问题2：容器无法连接到geodata-mcp-server**
+
+**解决方案**：
+1. 确保两个容器在同一网络：`--network geodata-network`
+2. 检查MCP服务器容器是否运行：`docker ps | grep geodata-mcp-server`
+
+**问题3：端口被占用**
+
+**解决方案**：
+1. 检查端口占用：`netstat -tuln | grep 900`
+2. 使用其他端口或停止占用端口的服务
+
+---
+
 ## 📚 相关文档
 
 - [MCP 服务完整指南](MCP_GUIDE.md) - 工具使用和查询工作流程
-- [Docker 部署后的 MCP 配置指南](MCP_DOCKER_CONFIG.md) - 详细配置说明
 - [Docker 部署指南](DOCKER_GUIDE.md) - Docker 编排说明
 
 ---

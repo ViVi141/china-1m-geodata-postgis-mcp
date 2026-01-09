@@ -33,7 +33,7 @@ MCP配置文件的位置取决于你使用的MCP客户端：
 
 根据你的部署方式选择配置：
 
-- **Docker 部署**：查看 [Docker 部署后的 MCP 配置指南](MCP_DOCKER_CONFIG.md) ⭐
+- **Docker 部署**：查看 [MCP配置指南](MCP_SERVER_CONFIG.md) ⭐
 - **本地 Python 环境**：使用下面的配置示例
 
 ### 配置示例（本地 Python 环境）

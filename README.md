@@ -58,9 +58,32 @@
 - ✅ **图幅管理**：自动识别和管理1:100万标准图幅代码（F49、G50等）
 - ✅ **字段说明**：自动生成字段说明文档，帮助理解数据含义
 
+### 🚀 生产环境状态
+
+**✅ 已在生产环境成功部署**
+
+本项目已在**云端Linux服务器**成功部署并稳定运行，已成功与LLM（大语言模型）通联，验证了以下能力：
+
+- ✅ **云端部署**：在Linux生产环境中成功部署
+- ✅ **LLM集成**：已成功与AI助手（Claude、GPT等）建立MCP连接
+- ✅ **数据查询**：空间数据查询和分析功能正常运行
+- ✅ **性能稳定**：生产环境运行稳定，查询响应及时
+
+**部署环境**：
+- 操作系统：Linux（云端服务器）
+- 部署方式：Docker Compose
+- 数据库：PostgreSQL/PostGIS
+- 网关：Supergateway（支持远程访问）
+- 状态：✅ 生产环境运行中
+
+**适用场景**：
+- 🏢 **生产环境**：已在云端Linux服务器成功部署
+- 💻 **开发环境**：支持本地Windows/Linux开发
+- 🔄 **混合部署**：支持开发和生产环境分离部署
+
 ### 📍 数据来源与定制
 
-本项目专门为**全国地理信息资源目录服务系统**的1:100万公众版基础地理信息数据（2021）定制化开发，经过深度优化，可直接用于生产环境。
+本项目专门为**全国地理信息资源目录服务系统**的1:100万公众版基础地理信息数据（2021）定制化开发，经过深度优化，已在生产环境验证，可直接用于生产环境。
 
 #### 数据概况
 
@@ -129,6 +152,8 @@
 **部署方式**：
 - 💻 **纯Windows&Linux部署**：直接在Windows或Linux系统上安装依赖并运行，适合开发和测试环境
 - 🐳 **Windows&Linux+Docker部署**（推荐）：使用Docker Compose一键部署，支持本地和远程访问，适合生产环境
+  - ✅ **已验证**：已在云端Linux服务器成功部署并稳定运行
+  - ✅ **LLM集成**：已成功与AI助手建立MCP连接并正常通联
 
 ## 🚀 快速开始
 
@@ -286,6 +311,10 @@ docker-compose up -d
 
 # 启动完整服务（包含Supergateway，支持远程访问）
 docker-compose --profile gateway up -d
+
+# 或使用独立脚本启动Supergateway（推荐）
+# Linux: ./scripts/start-supergateway.sh
+# Windows: .\scripts\start-supergateway.bat
 ```
 
 **3. 验证服务**
@@ -296,11 +325,15 @@ docker-compose ps
 
 # 检查PostgreSQL
 docker-compose exec postgres psql -U postgres -d gis_data -c "SELECT PostGIS_Version();"
+
+# 检查Supergateway（如果启用）
+# Supergateway 默认不提供 /health 端点，使用 /sse 验证
+curl -i --max-time 2 http://localhost:8000/sse
 ```
 
 **4. 在MCP客户端中配置**
 
-**Docker部署方式配置：**
+**Docker部署方式配置（推荐）：**
 
 ```json
 {
@@ -319,11 +352,26 @@ docker-compose exec postgres psql -U postgres -d gis_data -c "SELECT PostGIS_Ver
 }
 ```
 
+**常用命令：**
+
+```bash
+# 停止服务
+docker-compose stop
+
+# 停止并删除容器
+docker-compose down
+
+# 查看日志
+docker-compose logs -f
+
+# 进入容器
+docker-compose exec mcp-server bash
+docker-compose exec postgres psql -U postgres -d gis_data
+```
+
 **详细部署说明：**
-- **Windows Docker部署**：查看 [Windows Docker部署指南](docs/DOCKER_WINDOWS_DEPLOY.md)
-- **Linux Docker部署**：查看 [Linux Docker部署指南](docs/DOCKER_LINUX_DEPLOY.md)
-- **Docker快速开始**：查看 [Docker快速开始指南](README_DOCKER.md)
-- **Docker部署后的MCP配置**：查看 [Docker部署后的MCP配置指南](docs/MCP_DOCKER_CONFIG.md) ⭐
+- **Docker完整部署指南**：查看 [Docker部署指南](docs/DOCKER_GUIDE.md) ⭐
+- **MCP客户端配置**：查看 [MCP配置指南](docs/MCP_SERVER_CONFIG.md) ⭐
 
 ## 📊 数据规格配置
 
@@ -467,14 +515,12 @@ python scripts/setup_unified_database.py
 ├── docs/                      # 文档目录
 │   ├── UNIFIED_SCHEMA_GUIDE.md  # ⭐ 统一表结构导入指南
 │   ├── MCP_GUIDE.md            # ⭐ MCP服务完整指南（配置、工具使用、查询流程）
-│   ├── MCP_DOCKER_CONFIG.md    # ⭐ Docker部署后的MCP配置指南
+│   ├── MCP_SERVER_CONFIG.md    # ⭐ MCP配置指南（包含Docker和1Panel配置）
 │   ├── FIELD_SPEC.md           # 字段说明文档
 │   ├── TABLE_USAGE_GUIDE.md    # ⭐ 表用途和单位转换指南（重要）
 │   ├── TILE_CODE_GUIDE.md     # 图幅编号指南
 │   ├── QUERY_EXAMPLES.md       # 查询示例
-│   ├── DOCKER_GUIDE.md         # Docker编排使用指南
-│   ├── DOCKER_LINUX_DEPLOY.md  # Linux Docker完整部署指南
-│   └── DOCKER_WINDOWS_DEPLOY.md # Windows Docker部署指南
+│   └── DOCKER_GUIDE.md         # ⭐ Docker部署指南（包含Windows/Linux平台说明）
 ├── docker-compose.yml         # Docker Compose配置
 ├── docker-compose.alpine.yml  # Alpine版本配置
 ├── init.sql                   # 数据库初始化脚本
@@ -616,7 +662,7 @@ python scripts/reset_database.py
 - 统一表结构导入：查看 [统一表结构导入指南](docs/UNIFIED_SCHEMA_GUIDE.md)
 - 脚本功能说明：查看 [scripts/README.md](scripts/README.md)
 
-## 🛠️ 故障排除
+## 🛠️ 故障排除与常见问题（FAQ）
 
 ### 问题1: 无法读取.gdb文件
 **解决方案**: 
@@ -652,6 +698,133 @@ python scripts/reset_database.py
 - 确保日志级别设置为INFO
 - 查看终端输出，日志会实时显示进度
 
+### 问题7: Docker部署时PostGIS与已安装的PostgreSQL存储卷冲突 ⚠️
+
+**问题描述**：
+如果宿主机上已经安装了PostgreSQL，Docker Compose中的PostGIS容器可能会与现有PostgreSQL实例产生冲突，包括：
+- 端口冲突（默认5432端口）
+- 数据卷冲突
+- 配置文件冲突
+
+**解决方案**：
+
+**方案A：修改Docker容器的端口和数据卷（推荐）**
+
+1. **修改端口映射**：
+   在 `.env` 文件中修改 `POSTGRES_PORT`，使用非标准端口：
+   ```bash
+   POSTGRES_PORT=5433  # 使用5433端口，避免与宿主机PostgreSQL冲突
+   ```
+
+2. **使用独立的数据卷**：
+   确保 `docker-compose.yml` 中使用独立的数据卷名称：
+   ```yaml
+   volumes:
+     postgres_data:  # 独立的Docker卷，不会与宿主机PostgreSQL冲突
+       driver: local
+       name: geodata-postgres-data  # 明确指定卷名
+   ```
+
+3. **验证端口占用**：
+   ```bash
+   # Windows
+   netstat -ano | findstr :5432
+   
+   # Linux
+   sudo netstat -tulpn | grep :5432
+   ```
+
+**方案B：停止宿主机PostgreSQL服务（如果不需要）**
+
+如果宿主机上的PostgreSQL不是必需的，可以临时停止：
+
+```bash
+# Windows
+net stop postgresql-x64-XX  # XX是版本号
+
+# Linux (systemd)
+sudo systemctl stop postgresql
+
+# Linux (service)
+sudo service postgresql stop
+```
+
+**方案C：使用不同的PostgreSQL实例**
+
+如果需要在同一台机器上运行多个PostgreSQL实例：
+- 确保使用不同的端口
+- 使用不同的数据目录
+- 使用不同的配置文件
+
+**验证方法**：
+
+```bash
+# 检查Docker容器使用的端口
+docker-compose ps
+
+# 检查宿主机PostgreSQL端口
+# Windows
+netstat -ano | findstr :5432
+
+# Linux
+sudo netstat -tulpn | grep :5432
+
+# 测试连接（使用Docker容器的端口）
+psql -h localhost -p 5433 -U postgres -d gis_data
+```
+
+**注意事项**：
+- ⚠️ **数据隔离**：Docker容器中的PostgreSQL数据与宿主机PostgreSQL数据完全隔离，不会相互影响
+- ⚠️ **端口冲突**：如果端口冲突，Docker容器将无法启动，需要修改端口配置
+- ⚠️ **备份数据**：在修改配置前，建议备份现有数据
+
+### 问题8: Docker容器无法访问宿主机PostgreSQL
+
+**问题描述**：
+如果希望Docker容器连接到宿主机上已安装的PostgreSQL（而不是使用Docker容器中的PostgreSQL）。
+
+**解决方案**：
+
+1. **使用host网络模式**（Linux/macOS）：
+   ```yaml
+   services:
+     mcp-server:
+       network_mode: "host"
+   ```
+   然后配置连接地址为 `localhost`。
+
+2. **使用特殊DNS名称**（Windows/Docker Desktop）：
+   - Windows: 使用 `host.docker.internal`
+   - Linux: 使用 `172.17.0.1`（默认Docker网桥IP）
+
+3. **修改数据库配置**：
+   在 `config/database.ini` 中：
+   ```ini
+   [postgresql]
+   host = host.docker.internal  # Windows
+   # host = 172.17.0.1  # Linux
+   port = 5432
+   database = gis_data
+   user = postgres
+   password = your_password
+   ```
+
+### 问题9: 数据导入速度慢
+
+**解决方案**：
+- 增加批量插入大小：`--batch-size 2000` 或更大
+- 检查PostgreSQL配置：增加 `shared_buffers` 和 `work_mem`
+- 确保已创建空间索引（GIST）
+- 使用SSD存储可以提高性能
+
+### 问题10: 内存不足错误
+
+**解决方案**：
+- 减少批量插入大小：`--batch-size 500`
+- 增加Docker容器内存限制
+- 检查PostgreSQL的 `work_mem` 配置
+- 分批导入数据，而不是一次性导入所有图幅
+
 ## 📄 许可证
 
 MIT License
@@ -679,10 +852,8 @@ Email: 747384120@qq.com
 - [查询示例](docs/QUERY_EXAMPLES.md) - **常用PostGIS空间查询示例，包含自然保护区查询等实际案例**
 
 ### Docker部署文档
-- [Docker快速开始指南](README_DOCKER.md) - **Docker快速启动指南**
-- [Linux Docker部署指南](docs/DOCKER_LINUX_DEPLOY.md) - **Linux系统Docker部署步骤**
-- [Windows Docker部署指南](docs/DOCKER_WINDOWS_DEPLOY.md) - **Windows系统Docker部署步骤**
-- [Docker部署后的MCP配置指南](docs/MCP_DOCKER_CONFIG.md) - **⭐ Docker部署后的MCP客户端配置**
+- [Docker部署指南](docs/DOCKER_GUIDE.md) - **⭐ Docker完整部署指南（包含Windows/Linux平台说明）**
+- [MCP配置指南](docs/MCP_SERVER_CONFIG.md) - **⭐ MCP客户端配置（包含Docker和1Panel配置）**
 
 ### 开发和测试文档
 - [脚本说明](scripts/README.md) - 所有脚本的功能说明和使用方法
