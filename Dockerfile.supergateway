@@ -1,13 +1,24 @@
 # Supergateway 自定义镜像 - 包含 Docker CLI
 FROM supercorp/supergateway:latest
 
-# 安装 Docker CLI
-# 方案1: 从 Docker 官方仓库安装（推荐）
-RUN apk add --no-cache docker-cli || \
-    (apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*) || \
-    (yum install -y docker && yum clean all) || \
-    echo "Docker CLI installation failed, will use mounted binary"
-
-# 如果上面的安装失败，可以挂载宿主机的 Docker CLI
-# 在 docker-compose.yml 中挂载: /usr/bin/docker:/usr/bin/docker:ro
-
+# 安装 Docker CLI（兼容 Alpine / Debian / Ubuntu / CentOS）
+# 目的：让 supergateway 容器内能执行 `docker exec ...` 去调用同一 Docker daemon
+RUN set -eux; \
+    if command -v apk >/dev/null 2>&1; then \
+      # Alpine Linux
+      apk add --no-cache docker-cli; \
+    elif command -v apt-get >/dev/null 2>&1; then \
+      # Debian/Ubuntu
+      apt-get update; \
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends docker.io ca-certificates; \
+      rm -rf /var/lib/apt/lists/*; \
+    elif command -v yum >/dev/null 2>&1; then \
+      # CentOS/RHEL/OpenCloudOS
+      yum install -y docker; \
+      yum clean all; \
+    else \
+      echo "Unsupported base image: no apk/apt-get/yum found. Please mount a docker CLI binary into the container." >&2; \
+      exit 1; \
+    fi; \
+    # 验证 Docker CLI 安装成功
+    docker --version && echo "Docker CLI installed successfully"

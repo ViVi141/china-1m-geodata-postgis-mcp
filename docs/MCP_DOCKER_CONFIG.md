@@ -2,10 +2,12 @@
 
 本文档说明如何在 Docker 部署成功后，配置 MCP 客户端（如 Cursor、Claude Desktop、LM Studio）连接到 MCP 服务器。
 
+> **💡 提示**：需要快速配置？查看 [MCP Server 通用配置指南](MCP_SERVER_CONFIG.md) 获取通用配置模板。
+
 ## ⚠️ 重要提示
 
-- **LM Studio 用户**：LM Studio 只支持 stdio 方式的 MCP 连接，请使用**方式1（直接连接 Docker 容器）**，不要使用方式2（Supergateway）。
-- **其他客户端**：Cursor、Claude Desktop 等可以使用方式1或方式2。
+- **LM Studio 用户**：LM Studio 只支持 stdio 方式的 MCP 连接，请使用**方式1（直接连接 Docker 容器）**
+- **其他客户端**：Cursor、Claude Desktop 等可以使用方式1或方式2
 
 ## 📋 配置方式
 
@@ -52,26 +54,7 @@
 
 ### 配置示例
 
-#### Windows (PowerShell)
-
-```json
-{
-  "mcpServers": {
-    "china-1m-geodata-postgis-mcp": {
-      "command": "docker",
-      "args": [
-        "exec",
-        "-i",
-        "geodata-mcp-server",
-        "python",
-        "/app/mcp_server.py"
-      ]
-    }
-  }
-}
-```
-
-#### Linux/macOS
+**Windows/Linux/macOS（通用配置）：**
 
 ```json
 {
@@ -105,9 +88,7 @@
 2. 检查 MCP 服务器是否连接成功
 3. 测试工具：使用 `list_tile_codes` 查看可用的图幅代码
 
-### LM Studio 特定说明
-
-**LM Studio 配置步骤：**
+### LM Studio 配置步骤
 
 1. 打开 LM Studio
 2. 在右侧边栏切换到"程序"选项卡
@@ -137,24 +118,52 @@
 
 2. 验证 Supergateway 运行：
    ```powershell
-   curl http://localhost:8000/health
+   # Supergateway 默认不提供 /health 端点，使用 /sse 验证（会保持长连接）
+   curl http://localhost:8000/sse
    ```
 
 ### 配置示例
 
-#### 使用 SSE 连接（仅适用于支持 HTTP/SSE 的客户端，如某些 Web 应用）
+#### 标准 SSE 配置（适用于大多数客户端）
 
 ```json
 {
   "mcpServers": {
     "china-1m-geodata-postgis-mcp": {
-      "url": "http://localhost:8000/sse"
+      "url": "http://localhost:8000/sse",
+      "transport": "sse"
     }
   }
 }
 ```
 
-#### 使用 WebSocket 连接（仅适用于支持 WebSocket 的客户端）
+#### MaxKB 配置（特殊格式）
+
+MaxKB 的配置格式不同，`mcpServers` 下直接是 `url` 和 `transport`，不需要服务名称：
+
+```json
+{
+  "mcpServers": {
+    "url": "http://localhost:8000/sse",
+    "transport": "streamable_http"
+  }
+}
+```
+
+#### 远程访问配置
+
+```json
+{
+  "mcpServers": {
+    "china-1m-geodata-postgis-mcp": {
+      "url": "http://your-server-ip:8000/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
+
+#### WebSocket 配置（如果支持）
 
 ```json
 {
@@ -171,7 +180,11 @@
 - **url**: Supergateway 的端点地址
   - SSE: `http://localhost:8000/sse`
   - WebSocket: `ws://localhost:8001/ws`
-  - 健康检查: `http://localhost:8000/health`
+  - 注意：默认无 `/health` 端点（日志会显示 "Health endpoints: (none)"）
+- **transport**: 传输协议类型（使用SSE时必需）
+  - SSE: `"sse"`
+  - MaxKB 推荐: `"streamable_http"`（更好的可扩展性和可靠性）
+  - WebSocket: `"ws"` 或 `"websocket"`
 
 ### 支持的客户端
 
@@ -186,7 +199,8 @@
 {
   "mcpServers": {
     "china-1m-geodata-postgis-mcp": {
-      "url": "http://your-server-ip:8000/sse"
+      "url": "http://your-server-ip:8000/sse",
+      "transport": "sse"
     }
   }
 }
@@ -196,29 +210,9 @@
 
 ## 🔧 完整配置示例
 
-### Cursor IDE 完整配置（Windows）
+### 方式1：直接连接 Docker 容器（推荐）
 
-```json
-{
-  "mcpServers": {
-    "china-1m-geodata-postgis-mcp": {
-      "command": "docker",
-      "args": [
-        "exec",
-        "-i",
-        "geodata-mcp-server",
-        "python",
-        "/app/mcp_server.py"
-      ],
-      "env": {
-        "DOCKER_HOST": "unix:///var/run/docker.sock"
-      }
-    }
-  }
-}
-```
-
-### Claude Desktop 完整配置（Windows）
+**Windows/Linux/macOS（通用配置）：**
 
 ```json
 {
@@ -237,28 +231,20 @@
 }
 ```
 
-### LM Studio 完整配置（Windows）⭐⭐
+### 方式2：通过 Supergateway 连接
+
+**标准 SSE 配置：**
 
 ```json
 {
   "mcpServers": {
     "china-1m-geodata-postgis-mcp": {
-      "command": "docker",
-      "args": [
-        "exec",
-        "-i",
-        "geodata-mcp-server",
-        "python",
-        "/app/mcp_server.py"
-      ]
+      "url": "http://localhost:8000/sse",
+      "transport": "sse"
     }
   }
 }
 ```
-
-**LM Studio 配置位置：**
-- 通过 LM Studio 界面：右侧边栏 → "程序" → "安装" → "编辑 mcp.json"
-- 或直接编辑文件：`%APPDATA%\LM Studio\mcp.json`
 
 ---
 
@@ -327,6 +313,41 @@
    docker-compose logs supergateway
    ```
 
+### 问题5: MaxKB 提示 "Only support transport=sse or transport=streamable_http"
+
+**错误**: MaxKB 提示只支持 `transport=sse` 或 `transport=streamable_http`
+
+**解决方案**:
+1. **检查配置格式**：MaxKB 的配置格式与其他客户端不同，`mcpServers` 下直接是 `url` 和 `transport`，**不需要服务名称**：
+   ```json
+   {
+     "mcpServers": {
+       "url": "http://localhost:8000/sse",
+       "transport": "streamable_http"
+     }
+   }
+   ```
+2. **使用 streamable_http**（推荐）：
+   ```json
+   {
+     "mcpServers": {
+       "url": "http://localhost:8000/sse",
+       "transport": "streamable_http"
+     }
+   }
+   ```
+3. **或使用 sse**：
+   ```json
+   {
+     "mcpServers": {
+       "url": "http://localhost:8000/sse",
+       "transport": "sse"
+     }
+   }
+   ```
+4. **检查 JSON 格式**：确保 JSON 格式正确，没有语法错误
+5. **重启 MaxKB**：修改配置后，重启 MaxKB 服务
+
 ---
 
 ## 📝 快速检查清单
@@ -369,7 +390,9 @@
 
 ## 📚 相关文档
 
+- [MCP Server 通用配置指南](MCP_SERVER_CONFIG.md) - 通用配置模板
 - [MCP 服务完整指南](MCP_GUIDE.md) - 工具使用和查询工作流程
-- [Docker 部署指南](DOCKER_GUIDE.md) - Docker 编排说明
-- [Windows Docker 部署](DOCKER_WINDOWS_DEPLOY.md) - Windows 特定说明
+- [Docker 快速开始指南](../README_DOCKER.md) - Docker 快速启动
+- [Linux Docker 部署指南](DOCKER_LINUX_DEPLOY.md) - Linux 部署步骤
+- [Windows Docker 部署指南](DOCKER_WINDOWS_DEPLOY.md) - Windows 部署步骤
 

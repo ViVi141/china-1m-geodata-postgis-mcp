@@ -1,6 +1,6 @@
-# Linux Docker 完整部署指南（使用 Supergateway）
+# Linux Docker 部署指南
 
-本指南介绍如何在 Linux 环境下使用 Docker 完整部署 1:100万基础地理信息PostGIS MCP服务，包括使用 Supergateway 将 stdio 模式的 MCP 服务器转换为 SSE/WebSocket 服务。
+本指南介绍如何在 Linux 环境下使用 Docker 部署 1:100万基础地理信息PostGIS MCP服务。
 
 ## 📋 前置要求
 
@@ -122,7 +122,7 @@ docker-compose logs -f
 
 ### 4. 启动服务（完整版 - 使用Supergateway）
 
-#### 方式1：使用 Docker Compose（推荐）
+#### 方式1：使用 Docker Compose
 
 ```bash
 # 启动所有服务，包括Supergateway网关
@@ -130,13 +130,9 @@ docker-compose --profile gateway up -d
 
 # 查看服务状态
 docker-compose ps
-
-# 查看日志
-docker-compose logs -f supergateway
-docker-compose logs -f mcp-server
 ```
 
-#### 方式2：使用独立脚本（更灵活）
+#### 方式2：使用独立脚本（推荐）
 
 ```bash
 # 先启动基础服务
@@ -147,25 +143,6 @@ chmod +x scripts/start-supergateway.sh
 ./scripts/start-supergateway.sh
 ```
 
-#### 方式3：手动运行 Supergateway
-
-```bash
-# 先启动基础服务
-docker-compose up -d
-
-# 手动运行Supergateway
-docker run -it --rm \
-    --name geodata-supergateway \
-    --network geodata-network \
-    -p 8000:8000 \
-    -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    supercorp/supergateway:latest \
-    --stdio \
-    docker exec -i geodata-mcp-server python /app/mcp_server.py \
-    --port 8000 \
-    --mode sse
-```
-
 ### 5. 验证服务
 
 ```bash
@@ -173,7 +150,8 @@ docker run -it --rm \
 docker-compose exec postgres psql -U postgres -d gis_data -c "SELECT PostGIS_Version();"
 
 # 检查Supergateway（如果启用）
-curl http://localhost:8000/health
+# Supergateway 默认不提供 /health 端点，使用 /sse 验证（会保持长连接）
+curl -i --max-time 2 http://localhost:8000/sse
 
 # 查看所有服务日志
 docker-compose logs -f
@@ -252,36 +230,16 @@ docker-compose logs -f
 
 ## 📝 使用 Supergateway
 
-### 为什么需要 Supergateway？
+Supergateway 可以将 stdio 模式的 MCP 服务器转换为 HTTP/SSE/WebSocket 服务，支持远程访问。
 
-- **远程访问**: 将 stdio 模式的 MCP 服务器转换为 HTTP/SSE 服务，支持远程访问
-- **Web 集成**: 可以通过 WebSocket 在 Web 应用中集成 MCP 服务
-- **调试方便**: 提供 HTTP 接口，便于调试和监控
+### 访问端点
 
-### 启动 Supergateway
+- **SSE**: `http://localhost:8000/sse`
+- **WebSocket**: `ws://localhost:8001/ws`
 
-```bash
-# 启动所有服务（包括Supergateway）
-docker-compose --profile gateway up -d
+**注意**：Supergateway 默认不提供 `/health` 端点，使用 `/sse` 验证服务可用性。
 
-# 仅启动Supergateway（其他服务已运行）
-docker-compose up -d supergateway
-```
-
-### 访问 Supergateway
-
-```bash
-# 健康检查
-curl http://localhost:8000/health
-
-# SSE端点
-curl http://localhost:8000/sse
-
-# WebSocket端点
-ws://localhost:8001/ws
-```
-
-### 配置 MCP 客户端连接 Supergateway
+### 配置 MCP 客户端
 
 如果使用 Supergateway，MCP 客户端配置示例：
 
@@ -289,11 +247,14 @@ ws://localhost:8001/ws
 {
   "mcpServers": {
     "china-1m-geodata-postgis-mcp": {
-      "url": "http://localhost:8000/sse"
+      "url": "http://localhost:8000/sse",
+      "transport": "sse"
     }
   }
 }
 ```
+
+详细配置说明请查看 [Docker 部署后的 MCP 配置指南](MCP_DOCKER_CONFIG.md)
 
 ## 🛠️ 数据导入
 
@@ -346,7 +307,7 @@ docker-compose exec supergateway sh
 docker-compose exec postgres pg_isready -U postgres
 
 # 检查Supergateway
-curl http://localhost:8000/health
+curl -i --max-time 2 http://localhost:8000/sse
 
 # 检查所有服务状态
 docker-compose ps
@@ -385,65 +346,7 @@ sudo firewall-cmd --reload
 
 ### 3. 限制数据库访问
 
-默认情况下，PostgreSQL 端口 `5432` 不应暴露到公网。如果必须暴露，使用：
-
-- **VPN** 或 **SSH 隧道**
-- **pgBouncer** 连接池
-- **IP 白名单**
-
-### 4. 使用 HTTPS
-
-如果 Supergateway 暴露在公网，建议使用反向代理（如 Nginx）配置 HTTPS：
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
-    
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
-
-## 📊 性能优化
-
-### PostgreSQL 优化
-
-编辑 `docker-compose.yml` 中的 PostgreSQL 配置：
-
-```yaml
-command:
-  - "postgres"
-  - "-c" "shared_buffers=512MB"      # 根据内存调整
-  - "-c" "max_connections=300"       # 根据需求调整
-  - "-c" "work_mem=32MB"              # 根据并发数调整
-  - "-c" "maintenance_work_mem=256MB"
-  - "-c" "effective_cache_size=2GB"   # 根据内存调整
-```
-
-### 资源限制
-
-在生产环境中，建议设置资源限制：
-
-```yaml
-services:
-  postgres:
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-```
+默认情况下，PostgreSQL 端口 `5432` 不应暴露到公网。如果必须暴露，使用 VPN、SSH 隧道或 IP 白名单。
 
 ## 🐛 故障排除
 
@@ -502,16 +405,8 @@ services:
 
 ## 📚 相关文档
 
-- [Docker 编排使用指南](DOCKER_GUIDE.md)
-- [MCP 服务完整指南](../docs/MCP_GUIDE.md)
-- [Supergateway 官方文档](https://github.com/supercorp/supergateway)
-
-## 🆘 获取帮助
-
-如果遇到问题：
-
-1. 查看日志：`docker-compose logs -f`
-2. 检查服务状态：`docker-compose ps`
-3. 查看配置：`docker-compose config`
-4. 提交 Issue 到项目仓库
+- [Docker 快速开始指南](../README_DOCKER.md)
+- [Docker 部署后的 MCP 配置指南](MCP_DOCKER_CONFIG.md)
+- [MCP 服务完整指南](MCP_GUIDE.md)
+- [1Panel MCP 配置指南](1PANEL_MCP_CONFIG.md)
 

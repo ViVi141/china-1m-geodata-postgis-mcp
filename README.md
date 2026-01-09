@@ -127,30 +127,38 @@
 ```
 
 **部署方式**：
-- 🐳 **Docker部署**（推荐）：使用docker-compose一键部署，支持本地和远程访问
-- 💻 **本地部署**：直接运行Python脚本，适合开发和测试环境
+- 💻 **纯Windows&Linux部署**：直接在Windows或Linux系统上安装依赖并运行，适合开发和测试环境
+- 🐳 **Windows&Linux+Docker部署**（推荐）：使用Docker Compose一键部署，支持本地和远程访问，适合生产环境
 
 ## 🚀 快速开始
 
-### 系统要求
+根据您的需求选择部署方式：
 
+### 方式一：纯Windows&Linux部署
+
+#### 系统要求
+
+- **Windows 10/11** 或 **Linux**（Ubuntu 20.04+, Debian 11+, CentOS 8+等）
 - **Python 3.8+**
 - **PostgreSQL 9.5+** (推荐PostgreSQL 12+) - **必需**
 - **PostGIS 2.5+** 扩展 - **必需**
 - **GDAL/OGR库**（用于读取GDB文件）
 
-### 1. 安装依赖
+#### 1. 安装依赖
 
-#### Windows (推荐使用conda)
-```bash
+**Windows (推荐使用conda)**
+```powershell
 conda install -c conda-forge gdal fiona shapely psycopg2
 pip install -r requirements.txt
 ```
 
-#### Linux/Mac
+**Linux**
 ```bash
 # Ubuntu/Debian
 sudo apt-get install gdal-bin libgdal-dev python3-gdal
+
+# CentOS/RHEL
+sudo yum install gdal gdal-devel python3-gdal
 
 # 或使用conda
 conda install -c conda-forge gdal fiona shapely psycopg2
@@ -158,38 +166,21 @@ conda install -c conda-forge gdal fiona shapely psycopg2
 pip install -r requirements.txt
 ```
 
-### 2. 配置数据库
+#### 2. 安装并配置PostgreSQL/PostGIS
 
-#### 方式1：使用Docker（推荐）
+**Windows:**
+1. 下载并安装 [PostgreSQL](https://www.postgresql.org/download/windows/)
+2. 安装时选择PostGIS扩展
+3. 或使用包管理器安装PostGIS扩展
 
-**使用Docker Compose：**
+**Linux:**
 ```bash
-# 复制docker-compose.yml
-# 设置密码（可选，默认postgres）
-export POSTGRES_PASSWORD=your_password
+# Ubuntu/Debian
+sudo apt-get install postgresql postgresql-contrib postgis
 
-# 启动PostgreSQL/PostGIS
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f postgres
+# CentOS/RHEL
+sudo yum install postgresql postgresql-server postgis
 ```
-
-**Docker Compose会自动：**
-- 创建数据库 `gis_data`
-- 启用PostGIS扩展
-- 配置数据持久化
-
-详见 `docker-compose.yml` 和 `init.sql`
-
-**使用1Panel部署（推荐1Panel用户）：**
-
-如果您使用1Panel管理服务器，可以使用1Panel的可视化MCP服务配置：
-1. 先启动基础服务：`docker-compose up -d`
-2. 在1Panel中添加MCP服务，类型选择 `npx`，启动命令填写：`docker exec -i geodata-mcp-server python /app/mcp_server.py`
-3. 详细配置说明请查看 [Docker快速开始指南](README_DOCKER.md#方式3基础版--1panel-mcp服务推荐用于1panel用户)
-
-#### 方式2：本地PostgreSQL
 
 **创建数据库和启用PostGIS：**
 ```sql
@@ -198,7 +189,7 @@ CREATE DATABASE gis_data;
 CREATE EXTENSION postgis;
 ```
 
-### 3. 配置连接信息
+#### 3. 配置连接信息
 
 ```bash
 # 复制配置模板
@@ -206,23 +197,22 @@ cp config/database.ini.example config/database.ini
 
 # 编辑配置文件，填写数据库连接信息
 # Windows: notepad config/database.ini
-# Linux/Mac: nano config/database.ini
+# Linux: nano config/database.ini
 ```
 
-### 4. 运行MCP服务器
+#### 4. 运行MCP服务器
 
-#### 作为MCP服务器运行
 ```bash
-# 激活虚拟环境（如果使用）
-.venv\Scripts\Activate.ps1  # Windows PowerShell
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+python mcp_server.py
 
-# 启动MCP服务器
+# Linux
+source .venv/bin/activate
 python mcp_server.py
 ```
 
-#### 在MCP客户端中配置
-
-在MCP客户端配置文件中添加配置。详细配置说明请查看 [MCP服务完整指南](docs/MCP_GUIDE.md)。
+#### 5. 在MCP客户端中配置
 
 **基本配置示例（使用绝对路径）：**
 
@@ -260,8 +250,80 @@ python mcp_server.py
 - 必须使用**绝对路径**
 - 推荐设置 `cwd` 为项目根目录
 - 推荐使用虚拟环境
-- **Docker 部署用户**：请查看 [Docker 部署后的 MCP 配置指南](docs/MCP_DOCKER_CONFIG.md) ⭐
-- 详细配置说明和常见问题请查看 [MCP服务完整指南](docs/MCP_GUIDE.md)
+- 详细配置说明请查看 [MCP服务完整指南](docs/MCP_GUIDE.md)
+
+---
+
+### 方式二：Windows&Linux+Docker部署（推荐）
+
+#### 系统要求
+
+- **Windows 10/11**（需启用WSL2）或 **Linux**（Ubuntu 20.04+, Debian 11+, CentOS 8+等）
+- **Docker 20.10+**
+- **Docker Compose 2.0+**（或使用 `docker compose` 命令）
+
+#### 快速部署
+
+**1. 创建环境变量文件**
+
+在项目根目录创建 `.env` 文件：
+
+```bash
+POSTGRES_DB=gis_data
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_PORT=5432
+GATEWAY_SSE_PORT=8000
+GATEWAY_WS_PORT=8001
+GATEWAY_LOG_LEVEL=info
+```
+
+**2. 启动服务**
+
+```bash
+# 启动基础服务（PostgreSQL + MCP服务器）
+docker-compose up -d
+
+# 启动完整服务（包含Supergateway，支持远程访问）
+docker-compose --profile gateway up -d
+```
+
+**3. 验证服务**
+
+```bash
+# 检查服务状态
+docker-compose ps
+
+# 检查PostgreSQL
+docker-compose exec postgres psql -U postgres -d gis_data -c "SELECT PostGIS_Version();"
+```
+
+**4. 在MCP客户端中配置**
+
+**Docker部署方式配置：**
+
+```json
+{
+  "mcpServers": {
+    "china-1m-geodata-postgis-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "geodata-mcp-server",
+        "python",
+        "/app/mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+**详细部署说明：**
+- **Windows Docker部署**：查看 [Windows Docker部署指南](docs/DOCKER_WINDOWS_DEPLOY.md)
+- **Linux Docker部署**：查看 [Linux Docker部署指南](docs/DOCKER_LINUX_DEPLOY.md)
+- **Docker快速开始**：查看 [Docker快速开始指南](README_DOCKER.md)
+- **Docker部署后的MCP配置**：查看 [Docker部署后的MCP配置指南](docs/MCP_DOCKER_CONFIG.md) ⭐
 
 ## 📊 数据规格配置
 
@@ -610,6 +672,7 @@ Email: 747384120@qq.com
 - [MCP服务完整指南](docs/MCP_GUIDE.md) - ⭐ **重要**：MCP配置、工具使用和查询工作流程的完整指南
 
 ### 参考文档
+- [MCP Server 通用配置指南](docs/MCP_SERVER_CONFIG.md) - **⭐ 通用配置模板，适用于所有MCP客户端**
 - [表用途和单位转换指南](docs/TABLE_USAGE_GUIDE.md) - **⭐ 重要：各表用途速查表和单位转换方法，包含boua表查询指南，帮助LLM避免常见错误**
 - [字段说明文档](docs/FIELD_SPEC.md) - **所有表的字段详细说明，帮助LLM正确理解字段含义，避免猜测**
 - [图幅编号指南](docs/TILE_CODE_GUIDE.md) - **1:100万图幅编号说明，如何根据地理位置确定图幅**
@@ -617,10 +680,9 @@ Email: 747384120@qq.com
 
 ### Docker部署文档
 - [Docker快速开始指南](README_DOCKER.md) - **Docker快速启动指南**
-- [Docker编排使用指南](docs/DOCKER_GUIDE.md) - **Docker Compose详细使用说明**
+- [Linux Docker部署指南](docs/DOCKER_LINUX_DEPLOY.md) - **Linux系统Docker部署步骤**
+- [Windows Docker部署指南](docs/DOCKER_WINDOWS_DEPLOY.md) - **Windows系统Docker部署步骤**
 - [Docker部署后的MCP配置指南](docs/MCP_DOCKER_CONFIG.md) - **⭐ Docker部署后的MCP客户端配置**
-- [Linux Docker完整部署指南](docs/DOCKER_LINUX_DEPLOY.md) - **Linux系统完整部署步骤（含Supergateway）**
-- [Windows Docker部署指南](docs/DOCKER_WINDOWS_DEPLOY.md) - **Windows系统Docker部署步骤（含Supergateway）**
 
 ### 开发和测试文档
 - [脚本说明](scripts/README.md) - 所有脚本的功能说明和使用方法

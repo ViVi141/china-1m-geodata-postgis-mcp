@@ -89,35 +89,40 @@ services:
       LOG_LEVEL: ${GATEWAY_LOG_LEVEL:-info}
     ports:
       # SSE端口（Server-Sent Events）
-      - "${GATEWAY_SSE_PORT:-8000}:8000"
+      - "${GATEWAY_SSE_PORT:-8000}:${GATEWAY_SSE_PORT:-8000}"
       # WebSocket端口（可选）
-      - "${GATEWAY_WS_PORT:-8001}:8001"
+      - "${GATEWAY_WS_PORT:-8001}:${GATEWAY_WS_PORT:-8001}"
     volumes:
       # 挂载Docker socket以访问其他容器
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      # 方案A: Linux - 挂载Docker CLI二进制文件（如果镜像内没有）
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 可选：仅在“容器内未安装 docker-cli”且“宿主机为 Linux/WSL 且路径存在”时使用。
+      # Windows PowerShell 运行 Docker Compose 时不应使用这类 /usr/... 绑定挂载。
+      #
       # - /usr/bin/docker:/usr/bin/docker:ro
-      # 方案B: Windows/WSL2 - Docker Desktop路径（如果需要）
-      # - /mnt/wsl/docker-desktop/cli-tools:/usr/local/bin/docker:ro
-      # 方案C: 使用Docker Desktop的Docker CLI（Windows）
-      # 注意：Windows上Docker CLI通常在Docker Desktop安装目录
+      # - /usr/local/bin/docker:/usr/local/bin/docker:ro
     depends_on:
       - mcp-server
     restart: unless-stopped
     networks:
       - geodata-network
-    # 使用sh -c执行docker命令（更兼容）
+    # Supergateway 命令格式：supergateway --stdio <command> --port <port> --mode <mode>
+    # 注意：--port 和 --mode 参数是 Supergateway 的参数，用于配置监听端口和传输模式
+    # MCP 服务器只通过 stdio 与 Supergateway 通信，不需要端口参数
     command:
       - "--stdio"
-      - "sh"
-      - "-c"
       - "docker exec -i geodata-mcp-server python /app/mcp_server.py"
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      - "--port"
+      - "${GATEWAY_SSE_PORT:-8000}"
+      - "--mode"
+      - "sse"
+    # 注意：Supergateway 默认不提供 /health 端点
+    # 可以通过测试 /sse 端点来验证服务是否正常
+    # healthcheck:
+    #   test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/sse"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 10s
     profiles:
       - gateway
 
