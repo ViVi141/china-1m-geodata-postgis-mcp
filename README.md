@@ -6,6 +6,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue.svg)](https://www.postgresql.org/)
 [![PostGIS](https://img.shields.io/badge/PostGIS-2.5+-green.svg)](https://postgis.net/)
 [![MCP](https://img.shields.io/badge/MCP-Protocol-orange.svg)](https://modelcontextprotocol.io/)
+[![ModelScope](https://img.shields.io/badge/ModelScope-已发布-brightgreen.svg)](https://modelscope.cn/mcp/servers/ViVi141/China_1M_GeoData_PostGIS_MCP_Service)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 一个专为**全国地理信息资源目录服务系统**的1:100万基础地理信息数据设计的PostGIS MCP服务，通过Model Context Protocol（MCP）协议让AI助手能够直接访问和查询PostgreSQL/PostGIS中的空间地理数据。
@@ -154,6 +155,29 @@
 - 🐳 **Windows&Linux+Docker部署**（推荐）：使用Docker Compose一键部署，支持本地和远程访问，适合生产环境
   - ✅ **已验证**：已在云端Linux服务器成功部署并稳定运行
   - ✅ **LLM集成**：已成功与AI助手建立MCP连接并正常通联
+
+### 📦 ModelScope 发布
+
+**✅ 本MCP服务已正式发布至 ModelScope**
+
+- 🌐 **ModelScope 服务页面**：[https://modelscope.cn/mcp/servers/ViVi141/China_1M_GeoData_PostGIS_MCP_Service](https://modelscope.cn/mcp/servers/ViVi141/China_1M_GeoData_PostGIS_MCP_Service)
+
+**ModelScope 提供**：
+- 📚 **代码仓库**：可以从 ModelScope 获取服务代码和配置参考
+- 🔄 **版本管理**：支持查看不同版本的代码和更新历史
+- 💬 **社区支持**：在 ModelScope 平台获得社区支持和反馈
+- 📖 **文档参考**：查看服务说明和配置示例
+
+**重要说明**：
+- ⚠️ **本地部署需要**：本服务需要本地 PostgreSQL/PostGIS 数据库支持，**必须按照下方"快速开始"部分进行本地部署和配置**
+- ⚠️ **数据导入**：使用本服务前，需要先导入地理数据到 PostgreSQL/PostGIS 数据库
+- 📝 **配置方法**：详细配置方法请参考 [MCP配置指南](docs/MCP_SERVER_CONFIG.md) 和下方的"快速开始"部分
+
+**部署流程**：
+1. 从 ModelScope 获取服务代码（或使用本 GitHub 仓库）
+2. 按照下方"快速开始"部分配置 PostgreSQL/PostGIS 数据库
+3. 导入地理数据（参考数据导入工具）
+4. 配置 MCP 客户端连接本服务
 
 ## 🚀 快速开始
 
@@ -971,6 +995,9 @@ Email: 747384120@qq.com
 
 ### 开发和测试文档
 - [脚本说明](scripts/README.md) - 所有脚本的功能说明和使用方法
+
+### 外部资源
+- [ModelScope 服务页面](https://modelscope.cn/mcp/servers/ViVi141/China_1M_GeoData_PostGIS_MCP_Service) - 🌐 **ModelScope 平台上的 MCP 服务发布页面**
 
 ---
 
