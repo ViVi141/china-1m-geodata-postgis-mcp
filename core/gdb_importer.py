@@ -8,29 +8,11 @@ from shapely.geometry import shape
 from pathlib import Path
 from typing import Dict, Any, List
 from collections import defaultdict
-import logging
 import time
-import sys
 
-# 配置日志格式，包含时间戳
-# 注意：如果父模块已配置，这里不会重复配置
-if not logging.root.handlers:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%H:%M:%S",
-        stream=sys.stderr,  # 输出到stderr，避免干扰MCP协议
-    )
+from .logging_config import get_logger
 
-logger = logging.getLogger(__name__)
-
-# 配置日志格式，包含时间戳
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%H:%M:%S",
-    stream=sys.stderr,  # 输出到stderr，避免干扰MCP协议
-)
+logger = get_logger(__name__)
 
 
 class GDBImporter:

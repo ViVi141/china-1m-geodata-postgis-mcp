@@ -20,3 +20,11 @@ shapely>=2.0.0
 configparser>=5.0.0
 pyyaml>=6.0.0
 
+# 缓存支持（可选）
+#redis>=4.0.0  # 如需使用Redis缓存，取消注释
+
+# 测试依赖（开发环境）
+ #pytest>=7.0.0
+ #pytest-asyncio>=0.21.0
+ #pytest-cov>=4.0.0  # 代码覆盖率
+

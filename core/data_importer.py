@@ -6,19 +6,37 @@ import psycopg2
 import re
 from pathlib import Path
 from typing import Dict, Any, Optional
-import logging
+import time
 
 from .spec_loader import SpecLoader
+from .connection_pool import ConnectionPoolManager
+from .table_validator import TableValidator
+from .logging_config import get_logger
+from .cache_manager import cached, get_cache_manager
+from .performance_monitor import monitor_performance
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DataImporter:
     """数据导入器"""
 
-    def __init__(self):
+    def __init__(self, use_connection_pool: bool = True, use_cache: bool = True):
+        """
+        初始化数据导入器
+
+        Args:
+            use_connection_pool: 是否使用连接池，默认True
+            use_cache: 是否使用缓存，默认True
+        """
         self.spec_loader = SpecLoader()
         self.default_srid = 4326
+        self.use_connection_pool = use_connection_pool
+        self.use_cache = use_cache
+        if use_cache:
+            self.cache_manager = get_cache_manager()
+        else:
+            self.cache_manager = None
 
     async def import_data(
         self,
@@ -82,6 +100,7 @@ class DataImporter:
         finally:
             conn.close()
 
+    @monitor_performance("verify_data")
     async def verify_data(
         self,
         table_name: Optional[str] = None,
@@ -97,11 +116,16 @@ class DataImporter:
         Returns:
             验证结果字典
         """
+        if not database_config:
+            database_config = self._get_default_config()
+
         conn = self._get_connection(database_config)
 
         try:
             with conn.cursor() as cur:
                 if table_name:
+                    # 验证表名
+                    table_name = TableValidator.validate_table_name(table_name, conn)
                     tables = [table_name]
                 else:
                     # 获取所有表
@@ -118,14 +142,22 @@ class DataImporter:
 
                 results = {}
                 for table in tables:
-                    result = self._verify_table(cur, table)
-                    results[table] = result
+                    try:
+                        result = self._verify_table(cur, table)
+                        results[table] = result
+                    except Exception as e:
+                        logger.error(f"验证表 {table} 时出错: {e}")
+                        results[table] = {"error": str(e)}
 
                 return {"tables": results}
 
+        except Exception as e:
+            logger.error(f"验证数据失败: {e}", exc_info=True)
+            raise
         finally:
-            conn.close()
+            self._put_connection(conn, database_config)
 
+    @monitor_performance("query_data")
     async def query_data(
         self,
         table_name: str,
@@ -133,9 +165,10 @@ class DataImporter:
         attribute_filter: Optional[Dict[str, Any]] = None,
         limit: int = 100,
         database_config: Optional[Dict[str, Any]] = None,
+        timeout: int = 30,
     ) -> Dict[str, Any]:
         """
-        查询地理数据
+        查询地理数据（优化版本：批量转换几何对象）
 
         Args:
             table_name: 表名
@@ -143,16 +176,55 @@ class DataImporter:
             attribute_filter: 属性过滤条件
             limit: 返回记录数限制
             database_config: 数据库配置
+            timeout: 查询超时时间（秒），默认30秒
 
         Returns:
             查询结果字典
         """
+        if not database_config:
+            database_config = self._get_default_config()
+
+        # 验证表名（防止SQL注入）
+        conn = self._get_connection(database_config)
+        try:
+            table_name = TableValidator.validate_table_name(table_name, conn)
+        finally:
+            self._put_connection(conn, database_config)
+
+        # 重新获取连接用于查询
         conn = self._get_connection(database_config)
 
         try:
+            # 设置查询超时
             with conn.cursor() as cur:
-                # 构建查询SQL
-                sql = f"SELECT * FROM {table_name} WHERE 1=1"
+                cur.execute(f"SET statement_timeout = {timeout * 1000}")  # 毫秒
+                conn.commit()
+
+            with conn.cursor() as cur:
+                # 构建查询SQL，一次性转换所有几何对象（性能优化）
+                # 获取所有列名
+                cur.execute(
+                    """
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'public' 
+                      AND table_name = %s
+                    ORDER BY ordinal_position
+                    """,
+                    (table_name,),
+                )
+                all_columns = [row[0] for row in cur.fetchall()]
+
+                # 构建SELECT语句，包含几何转换
+                select_fields = []
+                for col in all_columns:
+                    if col == "geom":
+                        select_fields.append("ST_AsText(geom) as geom_wkt")
+                        select_fields.append("ST_IsEmpty(geom) as geom_empty")
+                    else:
+                        select_fields.append(col)
+
+                sql = f"SELECT {', '.join(select_fields)} FROM {table_name} WHERE 1=1"
                 params = []
 
                 # 添加空间过滤
@@ -169,59 +241,138 @@ class DataImporter:
                 # 添加属性过滤
                 if attribute_filter:
                     for key, value in attribute_filter.items():
+                        # 验证属性名（防止SQL注入）
+                        if not TableValidator.TABLE_NAME_PATTERN.match(key):
+                            raise ValueError(f"无效的属性名: {key}")
                         sql += f" AND {key} = %s"
                         params.append(value)
 
                 sql += " LIMIT %s"
                 params.append(limit)
 
+                start_time = time.time()
                 cur.execute(sql, params)
                 columns = [desc[0] for desc in cur.description]
                 rows = cur.fetchall()
+                query_time = time.time() - start_time
 
+                if query_time > 5.0:
+                    logger.warning(
+                        f"慢查询警告: {table_name} 查询耗时 {query_time:.2f}秒"
+                    )
+
+                # 处理结果
                 results = []
                 for row in rows:
                     record = dict(zip(columns, row))
-                    # 将几何对象转换为WKT
-                    if "geom" in record and record["geom"]:
-                        try:
-                            # 检查是否为空几何
-                            cur.execute(
-                                "SELECT ST_IsEmpty(%s), ST_AsText(%s)",
-                                (record["geom"], record["geom"]),
-                            )
-                            is_empty, geom_wkt = cur.fetchone()
+
+                    # 处理几何对象
+                    if "geom_wkt" in record:
+                        geom_wkt = record.pop("geom_wkt")
+                        is_empty = record.pop("geom_empty", False)
+                        if geom_wkt:
                             if is_empty:
-                                record["geom"] = geom_wkt + " (空几何)"
+                                record["geom"] = f"{geom_wkt} (空几何)"
                             else:
                                 record["geom"] = geom_wkt
-                        except Exception:
-                            # 如果转换失败，使用原始值
-                            record["geom"] = str(record["geom"])
+                        else:
+                            record["geom"] = None
+
                     results.append(record)
 
-                return {"count": len(results), "limit": limit, "data": results}
+                return {
+                    "count": len(results),
+                    "limit": limit,
+                    "data": results,
+                    "query_time_seconds": round(query_time, 3),
+                }
 
+        except psycopg2.errors.QueryCanceled:
+            raise ValueError(f"查询超时（超过{timeout}秒）")
+        except psycopg2.OperationalError as e:
+            logger.error(f"查询失败: {e}", exc_info=True)
+            raise ConnectionError(f"数据库操作失败: {e}") from e
+        except Exception as e:
+            logger.error(f"查询异常: {e}", exc_info=True)
+            raise
         finally:
-            conn.close()
+            self._put_connection(conn, database_config)
+
+    def _get_default_config(self) -> Dict[str, Any]:
+        """获取默认数据库配置"""
+        from .config_manager import ConfigManager
+
+        config_manager = ConfigManager()
+        return config_manager.get_default_database_config()
 
     def _get_connection(
-        self, database_config: Dict[str, Any]
+        self, database_config: Optional[Dict[str, Any]] = None
     ) -> psycopg2.extensions.connection:
-        """获取数据库连接"""
-        conn = psycopg2.connect(
-            host=database_config.get("host", "localhost"),
-            port=database_config.get("port", 5432),
-            database=database_config.get("database"),
-            user=database_config.get("user"),
-            password=database_config.get("password"),
-            client_encoding="UTF8",  # 确保使用UTF-8编码
-        )
-        # 设置连接编码
-        with conn.cursor() as cur:
-            cur.execute("SET client_encoding TO 'UTF8';")
-        conn.commit()
-        return conn
+        """
+        获取数据库连接（支持连接池）
+
+        Args:
+            database_config: 数据库配置，如果为None则使用默认配置
+
+        Returns:
+            数据库连接
+        """
+        if not database_config:
+            database_config = self._get_default_config()
+
+        if self.use_connection_pool:
+            try:
+                return ConnectionPoolManager.get_connection(database_config)
+            except Exception as e:
+                logger.warning(f"从连接池获取连接失败，使用直接连接: {e}")
+                # 如果连接池失败，回退到直接连接
+
+        # 直接连接（不使用连接池）
+        try:
+            conn = psycopg2.connect(
+                host=database_config.get("host", "localhost"),
+                port=database_config.get("port", 5432),
+                database=database_config.get("database"),
+                user=database_config.get("user"),
+                password=database_config.get("password"),
+                client_encoding="UTF8",
+            )
+            # 设置连接编码
+            with conn.cursor() as cur:
+                cur.execute("SET client_encoding TO 'UTF8';")
+            conn.commit()
+            return conn
+        except psycopg2.OperationalError as e:
+            logger.error(f"数据库连接失败: {e}")
+            raise ConnectionError(f"无法连接到数据库: {e}") from e
+
+    def _put_connection(
+        self,
+        conn: psycopg2.extensions.connection,
+        database_config: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        归还数据库连接
+
+        Args:
+            conn: 数据库连接
+            database_config: 数据库配置
+        """
+        if not database_config:
+            database_config = self._get_default_config()
+
+        if self.use_connection_pool:
+            try:
+                ConnectionPoolManager.put_connection(conn, database_config)
+                return
+            except Exception as e:
+                logger.warning(f"归还连接到池失败: {e}")
+
+        # 如果使用直接连接或归还失败，关闭连接
+        try:
+            conn.close()
+        except Exception as e:
+            logger.warning(f"关闭连接失败: {e}")
 
     def _ensure_postgis(self, conn):
         """确保PostGIS扩展已安装"""
@@ -275,6 +426,8 @@ class DataImporter:
             ),
         )
 
+    @cached(prefix="list_tables", ttl=600)  # 缓存10分钟
+    @monitor_performance("list_tables")
     async def list_tables(
         self, database_config: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -351,6 +504,8 @@ class DataImporter:
         finally:
             conn.close()
 
+    @cached(prefix="list_tile_codes", ttl=600)  # 缓存10分钟
+    @monitor_performance("list_tile_codes")
     async def list_tile_codes(
         self, database_config: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -363,6 +518,9 @@ class DataImporter:
         Returns:
             图幅代码列表字典
         """
+        if not database_config:
+            database_config = self._get_default_config()
+
         conn = self._get_connection(database_config)
 
         try:
@@ -394,10 +552,14 @@ class DataImporter:
 
                 for table_name in tables_with_tile_code:
                     try:
+                        # 验证表名后使用（防止SQL注入）
+                        validated_table = TableValidator.validate_table_name(
+                            table_name, conn
+                        )
                         cur.execute(
                             f"""
                             SELECT DISTINCT tile_code, COUNT(*) as count
-                            FROM {table_name}
+                            FROM {validated_table}
                             WHERE tile_code IS NOT NULL
                             GROUP BY tile_code
                             ORDER BY tile_code;
@@ -426,18 +588,26 @@ class DataImporter:
 
                 return {"tile_codes": tile_codes_list, "total": len(tile_codes_list)}
 
+        except Exception as e:
+            logger.error(f"列出图幅代码失败: {e}", exc_info=True)
+            raise
         finally:
-            conn.close()
+            self._put_connection(conn, database_config)
 
+    @monitor_performance("execute_sql")
     async def execute_sql(
-        self, sql: str, database_config: Optional[Dict[str, Any]] = None
+        self,
+        sql: str,
+        database_config: Optional[Dict[str, Any]] = None,
+        timeout: int = 30,
     ) -> Dict[str, Any]:
         """
-        执行SQL查询
+        执行SQL查询（带超时和错误处理）
 
         Args:
             sql: SQL语句
             database_config: 数据库配置
+            timeout: 查询超时时间（秒），默认30秒
 
         Returns:
             查询结果字典
@@ -476,9 +646,22 @@ class DataImporter:
         if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
             raise ValueError("SQL语句必须以SELECT或WITH开头")
 
+        # 检查SQL复杂度（简单启发式）
+        if sql_clean.count("JOIN") > 5:
+            logger.warning("查询包含多个JOIN操作，可能较慢")
+
+        if not database_config:
+            database_config = self._get_default_config()
+
         conn = self._get_connection(database_config)
 
         try:
+            # 设置查询超时
+            with conn.cursor() as cur:
+                cur.execute(f"SET statement_timeout = {timeout * 1000}")  # 毫秒
+                conn.commit()
+
+            start_time = time.time()
             with conn.cursor() as cur:
                 cur.execute(sql)
 
@@ -489,6 +672,10 @@ class DataImporter:
 
                 # 获取数据
                 rows = cur.fetchall()
+                query_time = time.time() - start_time
+
+                if query_time > 5.0:
+                    logger.warning(f"慢查询警告: SQL执行耗时 {query_time:.2f}秒")
 
                 # 转换结果
                 results = []
@@ -507,10 +694,23 @@ class DataImporter:
                             record[col] = value
                     results.append(record)
 
-                return {"columns": columns, "count": len(results), "data": results}
+                return {
+                    "columns": columns,
+                    "count": len(results),
+                    "data": results,
+                    "query_time_seconds": round(query_time, 3),
+                }
 
+        except psycopg2.errors.QueryCanceled:
+            raise ValueError(f"查询超时（超过{timeout}秒）")
+        except psycopg2.OperationalError as e:
+            logger.error(f"SQL执行失败: {e}", exc_info=True)
+            raise ConnectionError(f"数据库操作失败: {e}") from e
+        except Exception as e:
+            logger.error(f"SQL执行异常: {e}", exc_info=True)
+            raise
         finally:
-            conn.close()
+            self._put_connection(conn, database_config)
 
     def _get_table_info(self, table_name: str) -> Dict[str, Any]:
         """
