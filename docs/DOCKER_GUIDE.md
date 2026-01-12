@@ -32,14 +32,33 @@ POSTGRES_DB=gis_data
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password_here
 POSTGRES_PORT=5432
+
+# Supergateway 网关配置（可选）
+GATEWAY_SSE_PORT=8000
+GATEWAY_WS_PORT=8001
+GATEWAY_LOG_LEVEL=info
 ```
 
 ### 3. 启动服务
 
-#### 启动所有服务（数据库 + MCP服务器）
+#### 启动基础服务（数据库 + MCP服务器）
 
 ```bash
 docker-compose up -d
+```
+
+#### 启动完整服务（包含 Supergateway 网关，支持远程访问）
+
+```bash
+# 方式1：使用 Docker Compose（推荐）
+docker-compose --profile gateway up -d
+
+# 方式2：使用独立脚本（推荐，避免 Docker CLI 问题）
+# Windows:
+.\scripts\start-supergateway.bat
+
+# Linux/macOS:
+./scripts/start-supergateway.sh
 ```
 
 #### 查看服务状态
@@ -57,6 +76,7 @@ docker-compose logs -f
 # 查看特定服务日志
 docker-compose logs -f postgres
 docker-compose logs -f mcp-server
+docker-compose logs -f supergateway
 ```
 
 ### 4. 停止服务
@@ -182,6 +202,90 @@ REM 或者直接在一行写完（推荐）
 docker-compose --profile importer run --rm data-importer python main.py --reset-and-import --gdb-dir /app/data
 ```
 
+### Supergateway 网关服务（可选）
+
+- **服务名**: `supergateway`
+- **容器名**: `geodata-supergateway`
+- **构建**: 基于 `Dockerfile.supergateway`（包含 Docker CLI）
+- **默认**: 不自动启动（使用 `profiles: gateway`）
+
+**功能**:
+- 将 MCP 服务器的 stdio 通信转换为 HTTP/SSE/WebSocket 协议
+- 支持远程访问 MCP 服务
+- 提供 HTTP Server-Sent Events (SSE) 和 WebSocket 两种传输方式
+
+**端口配置**:
+- **SSE 端口**: `8000`（默认，可通过环境变量 `GATEWAY_SSE_PORT` 修改）
+- **WebSocket 端口**: `8001`（默认，可通过环境变量 `GATEWAY_WS_PORT` 修改）
+
+**启动方法**:
+
+**方式1：使用 Docker Compose（推荐）**
+
+```bash
+# 启动所有服务（包括 Supergateway）
+docker-compose --profile gateway up -d
+
+# 仅启动 Supergateway（需要先启动 postgres 和 mcp-server）
+docker-compose --profile gateway up -d supergateway
+```
+
+**方式2：使用独立脚本（推荐，避免 Docker CLI 问题）⭐⭐⭐**
+
+跨平台脚本会自动处理 Docker socket 挂载和网络配置：
+
+**Windows:**
+```powershell
+# 启动 Supergateway
+.\scripts\start-supergateway.bat
+```
+
+**Linux/macOS:**
+```bash
+# 启动 Supergateway
+chmod +x scripts/start-supergateway.sh
+./scripts/start-supergateway.sh
+```
+
+**配置说明**:
+- Supergateway 通过 Docker socket 访问 MCP 服务器容器
+- 使用 `docker exec` 命令在 MCP 服务器容器中运行 `mcp_server.py`
+- 通过 stdio 与 MCP 服务器通信，然后转换为 HTTP/SSE/WebSocket
+
+**环境变量**:
+- `GATEWAY_SSE_PORT`: SSE 端口（默认 8000）
+- `GATEWAY_WS_PORT`: WebSocket 端口（默认 8001）
+- `GATEWAY_LOG_LEVEL`: 日志级别（默认 info）
+
+**访问地址**:
+- **SSE 端点**: `http://localhost:8000/sse`
+- **WebSocket 端点**: `ws://localhost:8001/ws`
+
+**验证服务**:
+```bash
+# 检查容器状态
+docker-compose ps supergateway
+
+# 查看日志
+docker-compose logs -f supergateway
+
+# 测试 SSE 端点（会保持长连接）
+curl -i http://localhost:8000/sse
+
+# 注意：Supergateway 默认不提供 /health 端点，使用 /sse 验证
+```
+
+**注意事项**:
+1. **依赖关系**: Supergateway 需要 MCP 服务器容器（`geodata-mcp-server`）正在运行
+2. **Docker Socket**: 需要挂载 Docker socket（`/var/run/docker.sock`）以访问其他容器
+3. **网络**: Supergateway 必须与 MCP 服务器在同一 Docker 网络（`geodata-network`）中
+4. **Windows 特殊处理**: 在 Windows 上，如果遇到 "docker: not found" 错误，建议使用独立脚本（`start-supergateway.bat`）而不是 docker-compose
+
+**故障排除**:
+- 如果 Supergateway 不断重启，检查 MCP 服务器容器是否正常运行
+- 如果无法连接，检查端口是否被占用
+- 查看日志：`docker-compose logs supergateway`
+
 ## 🔧 高级配置
 
 ### 自定义配置
@@ -302,12 +406,56 @@ docker system prune -a --volumes
    docker-compose exec mcp-server ls -la /app/config
    ```
 
+### Supergateway 无法启动或连接失败
+
+1. **检查 MCP 服务器容器是否运行**：
+   ```bash
+   docker-compose ps mcp-server
+   ```
+   确保 MCP 服务器容器状态为 `Up`
+
+2. **检查 Supergateway 日志**：
+   ```bash
+   docker-compose logs supergateway
+   ```
+
+3. **检查 Docker Socket 挂载**：
+   ```bash
+   # 检查容器内是否可以访问 Docker socket
+   docker-compose exec supergateway ls -la /var/run/docker.sock
+   ```
+
+4. **检查网络连接**：
+   ```bash
+   # 确保 Supergateway 和 MCP 服务器在同一网络
+   docker network inspect geodata-network
+   ```
+
+5. **Windows 特殊问题 - "docker: not found"**：
+   如果 Supergateway 不断重启并提示 "docker: not found"，使用独立脚本启动：
+   ```powershell
+   .\scripts\start-supergateway.bat
+   ```
+
+6. **验证 Supergateway 端点**：
+   ```bash
+   # 测试 SSE 端点（会保持长连接，按 Ctrl+C 退出）
+   curl -i http://localhost:8000/sse
+   ```
+
 ### 端口冲突
 
 如果端口 5432 已被占用，修改 `.env` 文件中的 `POSTGRES_PORT`：
 
 ```bash
 POSTGRES_PORT=5433
+```
+
+如果 Supergateway 端口（8000 或 8001）被占用，修改 `.env` 文件：
+
+```bash
+GATEWAY_SSE_PORT=9000
+GATEWAY_WS_PORT=9001
 ```
 
 然后重新启动服务。
