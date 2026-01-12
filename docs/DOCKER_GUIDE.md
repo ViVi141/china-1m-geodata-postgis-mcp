@@ -124,6 +124,34 @@ docker-compose down -v
 
 **使用方法**:
 
+**方式1：使用跨平台脚本（推荐）⭐⭐⭐**
+
+跨平台脚本会自动检测当前平台并使用正确的语法，无需担心续行符问题：
+
+**使用 Python 脚本（所有平台通用）：**
+```bash
+# Windows PowerShell / CMD / Linux / macOS 通用
+python scripts/run_importer.py python main.py --reset-and-import --gdb-dir /app/data
+
+# 查看帮助
+python scripts/run_importer.py python main.py --help
+
+# 验证数据
+python scripts/run_importer.py python scripts/verify_data.py
+```
+
+**使用平台特定包装脚本（更简洁）：**
+```bash
+# Windows (CMD/PowerShell)
+scripts\run_importer.bat python main.py --reset-and-import --gdb-dir /app/data
+
+# Linux/macOS
+./scripts/run_importer.sh python main.py --reset-and-import --gdb-dir /app/data
+```
+
+**方式2：直接使用 docker-compose（需要根据平台调整语法）**
+
+**Linux/macOS (Bash):**
 ```bash
 # 启动导入服务并执行导入
 docker-compose --profile importer run --rm data-importer \
@@ -132,6 +160,26 @@ docker-compose --profile importer run --rm data-importer \
 # 查看导入帮助
 docker-compose --profile importer run --rm data-importer \
   python main.py --help
+```
+
+**Windows PowerShell:**
+```powershell
+# PowerShell 使用反引号 ` 作为续行符
+docker-compose --profile importer run --rm data-importer `
+  python main.py --reset-and-import --gdb-dir /app/data
+
+# 或者直接在一行写完（推荐）
+docker-compose --profile importer run --rm data-importer python main.py --reset-and-import --gdb-dir /app/data
+```
+
+**Windows CMD:**
+```cmd
+REM CMD 使用 ^ 作为续行符
+docker-compose --profile importer run --rm data-importer ^
+  python main.py --reset-and-import --gdb-dir /app/data
+
+REM 或者直接在一行写完（推荐）
+docker-compose --profile importer run --rm data-importer python main.py --reset-and-import --gdb-dir /app/data
 ```
 
 ## 🔧 高级配置

@@ -172,6 +172,52 @@ python scripts/reset_database.py
 python scripts/reset_database.py --yes
 ```
 
+## 🐳 Docker 数据导入（跨平台）
+
+### run_importer.py ⭐⭐⭐ **推荐（Docker环境）**
+跨平台数据导入脚本，自动检测平台并使用正确的 docker-compose 命令语法。
+
+**功能**：
+- 自动检测当前平台（Windows PowerShell/CMD、Linux/macOS Bash）
+- 自动处理平台差异，无需担心续行符问题
+- 统一的使用接口，跨平台一致
+
+**使用示例**：
+
+**方式1：直接使用 Python 脚本（所有平台通用）：**
+```bash
+# Windows PowerShell / CMD / Linux / macOS 通用
+# 重置数据库并导入数据
+python scripts/run_importer.py python main.py --reset-and-import --gdb-dir /app/data
+
+# 查看帮助
+python scripts/run_importer.py python main.py --help
+
+# 验证数据
+python scripts/run_importer.py python scripts/verify_data.py
+
+# 只导入数据（不重置）
+python scripts/run_importer.py python scripts/import_all_tiles.py
+```
+
+**方式2：使用平台特定包装脚本（更简洁）：**
+```bash
+# Windows (CMD/PowerShell)
+scripts\run_importer.bat python main.py --reset-and-import --gdb-dir /app/data
+
+# Linux/macOS
+./scripts/run_importer.sh python main.py --reset-and-import --gdb-dir /app/data
+```
+
+**注意**：
+- 容器内的路径使用 `/app/data` 作为 GDB 文件目录
+- 如果 GDB 文件在项目根目录，使用 `--gdb-dir /app/data`
+- 脚本会自动处理平台差异，无需担心续行符问题
+
+**相关文档**：`docs/DOCKER_GUIDE.md`
+
+---
+
 ## 🚀 服务启动
 
 ### start_mcp.bat / start_mcp.sh
@@ -268,6 +314,7 @@ python scripts/import_all_tiles.py
 | **验证** | `verify_data.py` | ✅ 可用 | 验证数据 |
 | | `check.py` | ⭐ 推荐 | 统一检查工具（连接/图层/几何质量） |
 | **管理** | `reset_database.py` | ✅ 可用 | 重置数据库 |
+| **Docker导入** | `run_importer.py` | ⭐⭐⭐ 推荐 | 跨平台Docker数据导入脚本 |
 | **启动** | `start_mcp.*` | ✅ 可用 | 启动MCP（本地） |
 | | `start-supergateway.*` | ✅ 可用 | 启动Supergateway（Docker） |
 
