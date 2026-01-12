@@ -7,7 +7,7 @@
 [![PostGIS](https://img.shields.io/badge/PostGIS-2.5+-green.svg)](https://postgis.net/)
 [![MCP](https://img.shields.io/badge/MCP-Protocol-orange.svg)](https://modelcontextprotocol.io/)
 [![ModelScope](https://img.shields.io/badge/ModelScope-已发布-brightgreen.svg)](https://modelscope.cn/mcp/servers/ViVi141/China_1M_GeoData_PostGIS_MCP_Service)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL3.0-yellow.svg)](LICENSE)
 
 一个专为**全国地理信息资源目录服务系统**的1:100万基础地理信息数据设计的PostGIS MCP服务，通过Model Context Protocol（MCP）协议让AI助手能够直接访问和查询PostgreSQL/PostGIS中的空间地理数据。
 
@@ -965,7 +965,7 @@ print(stats)
 
 ## 📄 许可证
 
-MIT License
+ AGPL-3.0 license
 
 ## 👤 作者
 
