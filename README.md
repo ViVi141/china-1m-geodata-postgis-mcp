@@ -11,6 +11,10 @@
 
 一个专为**全国地理信息资源目录服务系统**的1:100万基础地理信息数据设计的PostGIS MCP服务，通过Model Context Protocol（MCP）协议让AI助手能够直接访问和查询PostgreSQL/PostGIS中的空间地理数据。
 
+## 🎥 视频介绍
+
+**📺 简易部署教程视频**：[让AI助手秒变地理专家！1:100万中国地理数据MCP服务完整部署教程 | PostGIS空间查询实战](https://www.bilibili.com/video/BV16BrvBBECo/)
+
 ## 📋 项目简介
 
 本项目是一个**企业级PostGIS空间数据MCP服务**，专注于将1:100万公众版基础地理信息数据（2021）导入PostgreSQL/PostGIS，并通过MCP协议提供强大的空间查询、分析和交互能力。项目支持Docker一键部署，提供完整的工具链，让地理数据查询变得简单高效。
