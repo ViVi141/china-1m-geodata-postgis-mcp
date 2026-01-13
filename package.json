@@ -1,6 +1,6 @@
 {
   "name": "china-1m-geodata-postgis-mcp",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "1:100万基础地理信息PostGIS MCP服务 - China 1M GeoData PostGIS MCP Service",
   "type": "module",
   "main": "mcp_server.py",

@@ -582,7 +582,16 @@ python scripts/setup_unified_database.py
 - 🔒 **安全防护**：SQL注入防护、表名验证、查询超时保护
 - 📈 **性能监控**：完整的性能监控和慢查询日志
 
-### 🎯 最新优化特性（v1.1.0）
+### 🎯 版本特性
+
+#### v1.2.0 - 性能测试工具版本
+
+- ✨ 完整的性能测试工具集
+- ✨ Docker环境压测和资源监控
+- ✨ 测试结果分析和报告生成
+- 📚 完整的性能测试文档
+
+#### v1.1.0 - 性能优化版本
 
 #### 性能优化
 - ✅ **数据库连接池**：使用 `psycopg2.pool.ThreadedConnectionPool` 实现连接池管理，减少连接创建开销，提升并发性能
@@ -922,6 +931,37 @@ pytest tests/ --cov=core --cov-report=html
 - ✅ 缓存管理器测试（10个测试用例）
 - ✅ 性能监控器测试（7个测试用例）
 
+### 性能测试和压测
+
+项目提供了完整的性能测试和压测工具，用于测试Docker部署服务的性能：
+
+```bash
+# 基本性能测试
+python scripts/performance_test.py
+
+# 并发压测（10并发，100请求）
+python scripts/performance_test.py --concurrent 10 --requests 100
+
+# Docker环境压测（带资源监控）
+python scripts/docker_load_test.py --concurrent 10 --requests 100
+
+# Docker容器资源监控
+python scripts/monitor_docker.py
+
+# Windows快速测试（交互式菜单）
+scripts\run_performance_test.bat
+
+# Linux/macOS快速测试（交互式菜单）
+./scripts/run_performance_test.sh
+```
+
+**性能测试工具**：
+- `performance_test.py` - 完整的性能测试工具（基本测试 + 并发压测）
+- `docker_load_test.py` - Docker环境专用压测工具（带资源监控）
+- `monitor_docker.py` - Docker容器资源监控工具
+
+**详细说明**：查看 [性能测试指南](docs/PERFORMANCE_TEST_GUIDE.md) ⭐
+
 ## ⚙️ 配置说明
 
 ### 连接池配置
@@ -1007,7 +1047,29 @@ Email: 747384120@qq.com
 
 ## 📝 更新日志
 
-### v1.1.0 (2026-01) - 性能优化版本
+### v1.2.0 (2026-01-14) - 性能测试工具版本
+
+#### 新增功能
+- ✨ 完整的性能测试工具集（performance_test.py）
+- ✨ Docker环境压测工具（docker_load_test.py）
+- ✨ Docker容器资源监控工具（monitor_docker.py）
+- ✨ 测试结果分析工具（analyze_test_results.py）
+- ✨ 快速性能测试脚本（quick_performance_test.py）
+- ✨ 交互式测试菜单脚本（Windows/Linux）
+
+#### 文档完善
+- 📚 性能测试完整指南（PERFORMANCE_TEST_GUIDE.md）
+- 📚 性能测试总结报告（PERFORMANCE_TEST_SUMMARY.md）
+- 📝 支持生成文本/JSON/HTML格式的测试报告
+
+#### 工具增强
+- 🔧 自动检测运行环境（Docker容器内/本地）
+- 🔧 自动调整数据库连接配置
+- 🔧 支持持续压测（按时间）
+- 🔧 支持高并发压测
+- 🔧 实时监控容器资源使用
+
+### v1.1.0 (2026-01-11) - 性能优化版本
 
 #### 新增功能
 - ✨ 数据库连接池管理，提升并发性能
@@ -1026,7 +1088,7 @@ Email: 747384120@qq.com
 - 📝 统一日志配置系统
 - 🔒 增强的错误处理和安全性
 
-### v1.0.0 (2026-01) - 初始版本
+### v1.0.0 (2026-01-05) - 初始版本
 
 - ✨ MCP服务器核心功能
 - ✨ GDB数据导入
@@ -1035,5 +1097,5 @@ Email: 747384120@qq.com
 
 ---
 
-**当前版本**: 1.1.0  
-**最后更新**: 2026-01
+**当前版本**: 1.2.0  
+**最后更新**: 2026-01-14
