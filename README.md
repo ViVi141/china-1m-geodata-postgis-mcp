@@ -381,6 +381,25 @@ curl -i --max-time 2 http://localhost:8000/sse
 }
 ```
 
+**5. 在 Docker 中导入 GDB 数据**
+
+数据库就绪后，用一次性导入容器把 GDB 导入到 PostGIS：
+
+1. **确保基础服务已启动**：`docker-compose up -d`（PostgreSQL + MCP 服务器）。
+2. **放置 GDB 文件**：将 `.gdb` 图幅（如 `F49.gdb`）放在**项目根目录**（或根目录下的子目录，如 `data/`）。
+3. **执行导入**（任选其一）：
+
+```bash
+# 推荐：跨平台脚本（自动适配 Windows/Linux）
+python scripts/run_importer.py python main.py --reset-and-import --gdb-dir /app/data
+
+# 或直接使用 docker-compose（Windows 下可整行执行）
+docker-compose --profile importer run --rm data-importer python main.py --reset-and-import --gdb-dir /app/data
+```
+
+- 若 GDB 在项目根目录下的 `data` 子目录，则使用 `--gdb-dir /app/data/data`。
+- 上述命令会：重置库 → 解析参考图幅 F49 → 建表 → 导入所有图幅。仅导入不重置可参考 [Docker 部署指南 - 数据导入](docs/DOCKER_GUIDE.md#数据导入服务可选)。
+
 **常用命令：**
 
 ```bash
