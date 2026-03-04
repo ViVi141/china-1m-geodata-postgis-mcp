@@ -322,10 +322,11 @@ python mcp_server.py
 在项目根目录创建 `.env` 文件：
 
 ```bash
+# 可复制 .env.example 为 .env 后修改（默认 Postgres 宿主机端口 5433，避免与其它 Postgres 冲突）
 POSTGRES_DB=gis_data
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password
-POSTGRES_PORT=5432
+POSTGRES_PORT=5433
 GATEWAY_SSE_PORT=8000
 GATEWAY_WS_PORT=8001
 GATEWAY_LOG_LEVEL=info
@@ -782,22 +783,22 @@ python scripts/reset_database.py
 - 确保日志级别设置为INFO
 - 查看终端输出，日志会实时显示进度
 
-### 问题7: Docker部署时PostGIS与已安装的PostgreSQL存储卷冲突 ⚠️
+### 问题7: Docker部署时PostGIS与已安装的PostgreSQL/其他Docker中的Postgres冲突 ⚠️
 
-**问题描述**：
-如果宿主机上已经安装了PostgreSQL，Docker Compose中的PostGIS容器可能会与现有PostgreSQL实例产生冲突，包括：
-- 端口冲突（默认5432端口）
-- 数据卷冲突
-- 配置文件冲突
+**当前默认行为**：本项目 **已默认将 Postgres 映射到宿主机端口 5433**（见 `docker-compose.yml` 与 `.env.example`），因此一般不会与宿主机或其它 Docker 中占用 5432 的 Postgres 冲突。
+
+**若仍出现冲突**（例如本机 5433 也被占用），可能原因包括：
+- 端口冲突（宿主机 5433 被占用）
+- 数据卷或容器名与其它项目重复
 
 **解决方案**：
 
-**方案A：修改Docker容器的端口和数据卷（推荐）**
+**方案A：修改宿主机映射端口（推荐）**
 
 1. **修改端口映射**：
-   在 `.env` 文件中修改 `POSTGRES_PORT`，使用非标准端口：
+   在 `.env` 中设置 `POSTGRES_PORT` 为未占用端口，例如：
    ```bash
-   POSTGRES_PORT=5433  # 使用5433端口，避免与宿主机PostgreSQL冲突
+   POSTGRES_PORT=5434
    ```
 
 2. **使用独立的数据卷**：
@@ -853,7 +854,7 @@ netstat -ano | findstr :5432
 # Linux
 sudo netstat -tulpn | grep :5432
 
-# 测试连接（使用Docker容器的端口）
+# 测试连接（宿主机端口默认 5433，若已改 .env 则用对应端口）
 psql -h localhost -p 5433 -U postgres -d gis_data
 ```
 

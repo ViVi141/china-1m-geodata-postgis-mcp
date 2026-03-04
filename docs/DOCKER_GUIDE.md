@@ -27,11 +27,11 @@
 创建 `.env` 文件（在项目根目录）：
 
 ```bash
-# PostgreSQL 数据库配置
+# PostgreSQL 数据库配置（默认宿主机端口 5433，避免与其它 Postgres 冲突）
 POSTGRES_DB=gis_data
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password_here
-POSTGRES_PORT=5432
+POSTGRES_PORT=5433
 
 # Supergateway 网关配置（可选）
 GATEWAY_SSE_PORT=8000
@@ -99,7 +99,7 @@ docker-compose down -v
 - **服务名**: `postgres`
 - **容器名**: `geodata-postgres`
 - **镜像**: `postgis/postgis:16-3.4`
-- **端口**: `5432`（可通过环境变量 `POSTGRES_PORT` 修改）
+- **端口**: `5433`（默认，可通过环境变量 `POSTGRES_PORT` 修改，避免与其它 Postgres 冲突）
 - **数据卷**: `postgres_data`（持久化存储）
 
 **功能**:
@@ -109,7 +109,7 @@ docker-compose down -v
 
 **连接信息**:
 - 主机: `localhost`（宿主机）或 `postgres`（容器内）
-- 端口: `5432`（默认）
+- 端口: `5433`（默认，宿主机映射；容器内为 5432）
 - 数据库: `gis_data`（默认）
 - 用户: `postgres`（默认）
 - 密码: 通过环境变量 `POSTGRES_PASSWORD` 设置
@@ -443,13 +443,23 @@ docker system prune -a --volumes
    curl -i http://localhost:8000/sse
    ```
 
+### 与其他 Docker / 本机 Postgres 共存（推荐做法）
+
+本项目**默认将 Postgres 映射到宿主机端口 5433**，避免与宿主机或其它 Docker 中已占用 5432 的 Postgres 冲突。
+
+- **默认行为**：不配置 `.env` 时，宿主机端口为 **5433**，容器内仍为 5432；MCP 服务、数据导入等在同一 Docker 网络内通过 `postgres:5432` 访问，无需改配置。
+- **需要从宿主机连接时**（如 pgAdmin、psql、备份脚本）：使用 `localhost` + 宿主机端口（默认 5433），例如：
+  ```bash
+  psql -h localhost -p 5433 -U postgres -d gis_data
+  ```
+- **若本机 5432 未被占用且希望使用 5432**：在 `.env` 中设置 `POSTGRES_PORT=5432` 即可。
+- **完全不占用宿主机端口**：若仅通过 MCP 使用、不需要从宿主机直连数据库，可注释掉 `docker-compose.yml` 中 postgres 的 `ports` 段，或使用 `docker-compose.override.yml` 覆盖并去掉端口映射。
+
+建议复制 `.env.example` 为 `.env` 后按需修改（参见项目根目录 `.env.example`）。
+
 ### 端口冲突
 
-如果端口 5432 已被占用，修改 `.env` 文件中的 `POSTGRES_PORT`：
-
-```bash
-POSTGRES_PORT=5433
-```
+若 5433 也被占用，可在 `.env` 中改为其它端口，例如 `POSTGRES_PORT=5434`。
 
 如果 Supergateway 端口（8000 或 8001）被占用，修改 `.env` 文件：
 
@@ -517,7 +527,7 @@ Set-Content .env @"
 POSTGRES_DB=gis_data
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password_here
-POSTGRES_PORT=5432
+POSTGRES_PORT=5433
 GATEWAY_SSE_PORT=8000
 GATEWAY_WS_PORT=8001
 GATEWAY_LOG_LEVEL=info
@@ -635,7 +645,7 @@ cat > .env <<EOF
 POSTGRES_DB=gis_data
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_secure_password_here
-POSTGRES_PORT=5432
+POSTGRES_PORT=5433
 GATEWAY_SSE_PORT=8000
 GATEWAY_WS_PORT=8001
 GATEWAY_LOG_LEVEL=info
@@ -681,13 +691,13 @@ POSTGRES_PASSWORD=<生成的强密码>
 **2. 防火墙配置**
 
 ```bash
-# Ubuntu/Debian (UFW)
-sudo ufw allow 5432/tcp  # PostgreSQL（仅内网）
+# Ubuntu/Debian (UFW)（端口与 .env 中 POSTGRES_PORT 一致，默认 5433）
+sudo ufw allow 5433/tcp  # PostgreSQL（仅内网）
 sudo ufw allow 8000/tcp  # Supergateway SSE
 sudo ufw allow 8001/tcp  # Supergateway WebSocket
 
 # CentOS/RHEL (firewalld)
-sudo firewall-cmd --permanent --add-port=5432/tcp
+sudo firewall-cmd --permanent --add-port=5433/tcp
 sudo firewall-cmd --permanent --add-port=8000/tcp
 sudo firewall-cmd --permanent --add-port=8001/tcp
 sudo firewall-cmd --reload
