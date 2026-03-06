@@ -8,6 +8,7 @@
 [![MCP](https://img.shields.io/badge/MCP-Protocol-orange.svg)](https://modelcontextprotocol.io/)
 [![ModelScope](https://img.shields.io/badge/ModelScope-已发布-brightgreen.svg)](https://modelscope.cn/mcp/servers/ViVi141/China_1M_GeoData_PostGIS_MCP_Service)
 [![License](https://img.shields.io/badge/License-AGPL3.0-yellow.svg)](LICENSE)
+[![MCP Badge](https://lobehub.com/badge/mcp/vivi141-china-1m-geodata-postgis-mcp)](https://lobehub.com/mcp/vivi141-china-1m-geodata-postgis-mcp)
 
 一个专为**全国地理信息资源目录服务系统**的1:100万基础地理信息数据设计的PostGIS MCP服务，通过Model Context Protocol（MCP）协议让AI助手能够直接访问和查询PostgreSQL/PostGIS中的空间地理数据。
 
